@@ -302,7 +302,7 @@ public final class Global {
     // --------------------------------------------------------------------------
     public  String[] getScenarios() {
         //return  new String[] {"SimpleRespirator", "ArterialLine", "PkPd","CustomRespirator"};
-        return new String[]{"SimpleRespirator", "CustomRespirator"};
+        return new String[]{"SimpleRespirator", "CustomRespirator", "ArterialLine"};
     }
 
     public void setScenario(String name) {

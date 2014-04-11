@@ -10,7 +10,7 @@
     <name>Management Component</name>
     
     <properties>
-        <drools.version>5.5.0.Beta1</drools.version>
+        <drools.version>5.6.0.Final</drools.version>
     </properties>
     
     <build>

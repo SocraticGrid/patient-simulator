@@ -289,8 +289,7 @@ class DxSystemEventQueueUtilities
     TimerQueue q = TimerQueue.sharedInstance();
 
     synchronized(q) {
-        if(!q.running)
-      q.start();
+        q.startIfNeeded();
     }
     attemptedStart = true;
       }
