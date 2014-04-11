@@ -1,0 +1,56 @@
+package com.cognitive.nsf.model;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.fact.UniqueJCpSimData;
+
+
+/*
+rule 'ARDS Recommendation Base Rule'
+when
+    $model: DiseaseModel(name == "ARDS")
+    $recommendation: ModelRecommendation(model == $model)
+then
+end
+*/
+
+
+rule 'Set PEEP to PIP 20% if PIP grater than 30'
+lock-on-active true
+when
+    $model: DiseaseModel(name == "ARDS")
+    $recommendation: ModelRecommendation(model == $model)
+    $data: UniqueJCpSimData($v: data[JCpSimParameter.V_PIP] > 30)
+then
+    System.out.println("Model!");
+    /*
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PEEP, ((Double)$v) * 0.20)
+    }
+    */
+end 
+
+rule '2Set PEEP to PIP 20% if PIP grater than 30'
+lock-on-active true
+when
+    $model: DiseaseModel(name == "ARDS")
+    $recommendation: ModelRecommendation(model == $model)
+    $data: UniqueJCpSimData($v: data[JCpSimParameter.V_PIP])
+then
+    System.out.println("222!: "+$v);
+end 
+
+rule '3Set PEEP to PIP 20% if PIP grater than 30'
+lock-on-active true
+when
+    $model: DiseaseModel(name == "ARDS")
+    $recommendation: ModelRecommendation(model == $model)
+    $data: UniqueJCpSimData($v: data[JCpSimParameter.V_PIP] > 30)
+then
+    System.out.println("333!: "+$v);
+end 

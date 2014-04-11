@@ -1,0 +1,47 @@
+package com.cognitive.nsf.management.model.drools;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.jcpsim.data.JCpSimRecommendedData;
+import com.cognitive.nsf.management.model.Model;
+import com.cognitive.nsf.management.model.expectation.ExpectationResults;
+import com.cognitive.nsf.management.model.expectation.PolicyEnforcer;
+import com.cognitive.nsf.management.model.expectation.PolicyEnforcer;
+
+
+global PolicyEnforcer policyEnforcer;
+global Model model;
+
+rule 'Init ExpectationResults'
+when
+    $data: JCpSimData()
+then
+    insert(new ExpectationResults(model));
+end
+
+rule 'PIP should be between 14 and 50'
+when 
+    $result: ExpectationResults()
+    JCpSimData(data[JCpSimParameter.V_PIP] < 14 || data[JCpSimParameter.V_PIP] > 50)
+then
+    $result.addViolation(ExpectationResults.ConstraintViolation.TYPE.HARD, 90.0);
+end
+
+rule 'Notify Results'
+salience -100
+when
+    $result: ExpectationResults()
+then
+    policyEnforcer.onExpectationResults($result);
+    retract($result);
+end
+
+rule 'Clear Data'
+salience -100
+when
+    $data: JCpSimData()
+then
+    retract($data);
+end
+

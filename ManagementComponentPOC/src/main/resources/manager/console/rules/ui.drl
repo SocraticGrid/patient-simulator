@@ -1,0 +1,47 @@
+package com.cognitive.nsf.management.console;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.ConstraintViolationCalculationResult;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.log.FileLogger;
+import com.cognitive.nsf.management.ui.ManagementConsole.RuleListener;
+import com.cognitive.nsf.management.fact.control.Phase;
+import com.cognitive.nsf.management.fact.control.NoAlternativeModelFound;
+
+global RuleListener ruleListener;
+
+rule '[Management Console] notify CV to UI'
+when
+    $cv: ConstraintViolation()
+then
+    ruleListener.onConstraintViolation($cv);
+end
+
+rule '[Management Console] notify Phase to UI'
+when
+    $p: Phase()
+then
+    ruleListener.onPhaseChange($p);
+end
+
+rule '[Management Console] notify NoAlternativeModelFound to UI'
+when
+    $f: NoAlternativeModelFound()
+then
+    ruleListener.onNoAlternativeModelFound($f);
+end
+
+rule '[Management Console] notify ConstraintViolationCalculationResult to UI'
+salience 10
+when
+    $c: ConstraintViolationCalculationResult($model: model, $weight: weight, $constraintsViolations: constraintsViolations)
+then
+    ruleListener.onConstraintViolationCalculationResult($model, $weight, $constraintsViolations);
+end

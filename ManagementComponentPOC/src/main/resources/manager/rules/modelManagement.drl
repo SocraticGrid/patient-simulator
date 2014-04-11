@@ -1,0 +1,229 @@
+package com.cognitive.nsf.management;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.DiseaseModelTotalWeight;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.fact.ModelRecommendationVetoed;
+import com.cognitive.nsf.management.fact.UniqueGasJCpSimData;
+import com.cognitive.nsf.management.fact.UniqueJCpSimData;
+import com.cognitive.nsf.management.fact.control.Lock;
+import com.cognitive.nsf.management.fact.control.Phase;
+import com.cognitive.nsf.management.fact.control.Phase.PhaseName;
+
+
+declare JCpSimData 
+    @role(event)
+    @expires (10s)
+end
+
+
+declare UniqueJCpSimData
+    @role(event)
+    @expires (1m)
+end
+
+declare UniqueGasJCpSimData
+    @role(event)
+    @expires (1m)
+end
+
+declare GasCalculatedTimeJCpSimData
+    @role(event)
+    @timestamp (timestamp)
+    @expires (25m)
+end
+
+
+declare ModelRecommendationApplied 
+    @role(event)
+    @expires(5m)
+end
+
+declare ModelRecommendationVetoed
+    @role(event)
+    @expires(5m)
+end
+
+declare ConstraintViolation
+    @role(event)
+    @expires(3m)
+end
+
+global Manager manager;
+
+
+/*********************************************************
+                    DATA IDENTIFICATION
+*********************************************************/
+
+/*
+rule '[Manager] Detect FIRST data set'
+when
+    $d1:JCpSimData()
+    not JCpSimData(this != $d1)
+then
+    //don($d1, UniqueJCpSimData.class);
+    insert(new UniqueJCpSimData($d1.getData()));
+end
+
+rule '[Manager] Detect UNIQUE data'
+when
+    $d1:JCpSimData()
+    $d2:JCpSimData(this after $d1)
+    not JCpSimData(this != $d1, this != $d2, this after $d1, this before $d2)
+    eval (!$d2.hasEquivalentInputParameters($d1))
+then
+    //don($d2, UniqueJCpSimData.class);
+    System.out.println("UNIQUE Data detected!");
+    insert(new UniqueJCpSimData($d2.getData()));
+end
+
+rule '[Manager] Detect UNIQUE GAS data'
+when
+    $d1:JCpSimData()
+    $d2:JCpSimData(this after $d1)
+    not JCpSimData(this != $d1, this != $d2, this after $d1, this before $d2)
+    eval (!$d2.hasEquivalentGasOutputParameters($d1))
+then
+    insert(new UniqueGasJCpSimData($d2.getData()));
+end
+*/
+
+rule '[Manager] Detect GAS CALCULATED TIME data when no Phase is present'
+when
+    not Phase()
+    $d1:JCpSimData()
+    $d2:JCpSimData(this after $d1, data[JCpSimParameter.O_G_GAS_CALCULATED] != $d1.data[JCpSimParameter.O_G_GAS_CALCULATED])
+    not JCpSimData(this != $d1, this != $d2, this after $d1, this before $d2)
+then
+    insert(new GasCalculatedTimeJCpSimData($d2.getData()));
+end
+
+rule '[Manager] Detect GAS CALCULATED TIME data when Phase is present'
+when
+    Phase($activationDate: activationDate)
+    $d1:JCpSimData(this after $activationDate)
+    $d2:JCpSimData(this after $d1, data[JCpSimParameter.O_G_GAS_CALCULATED] != $d1.data[JCpSimParameter.O_G_GAS_CALCULATED])
+    not JCpSimData(this != $d1, this != $d2, this after $d1, this before $d2)
+then
+    insert(new GasCalculatedTimeJCpSimData($d2.getData()));
+end
+
+
+/*********************************************************
+            RECOMMENDATION MANAGEMENT
+*********************************************************/
+
+rule '[Manager] Apply Recommendation from Active Model'
+salience -100
+when
+    $model: DiseaseModel(active == true)
+    $recommendation: ModelRecommendation(model == $model, notEmpty == true)
+then
+    System.out.println("Applying Recommendation from "+$model.getName());
+    //apply the recommendation
+    manager.applyRecommendation($recommendation);
+    
+    //create a fact that represents the recommendation changes
+    ModelRecommendationApplied $modelRecommendationApplied = 
+        new ModelRecommendationApplied($model, $recommendation.getValidRecommendedValues(), $recommendation.getRecommendationSources());
+
+    //create a fact that represents the recommendation vetoed changes
+    ModelRecommendationVetoed $modelRecommendationVetoed = 
+        new ModelRecommendationVetoed($model, $recommendation.getVetoedRecommendedValues(), $recommendation.getVetoedReasons());
+
+    //Clear the recommendation since it was applied OK
+    modify($recommendation){
+        clear()
+    }
+
+    //notify about the recommendation changes
+    insert($modelRecommendationApplied);
+
+    //notify about the recommendation vetos
+    insert($modelRecommendationVetoed);
+end
+
+rule '[Manager] Log Applied Recommendation from Active Model'
+salience -100
+when
+    $mra: ModelRecommendationApplied($model: model)
+then
+    System.out.println("The following recommendations from model "+$model.getName()+" were APPLIED:");
+    for (JCpSimParameter p : $mra.getAppliedChanges().keySet()){
+        System.out.println("\t-Change "+p+" to "+$mra.getAppliedChanges().get(p) + "   ["+$mra.getSources().get(p)+"]");
+    }
+end
+
+rule '[Manager] Log Vetoed Recommendation from Active Model'
+salience -100
+when
+    $mrv: ModelRecommendationVetoed($model: model, vetoedChanges.empty == false)
+then
+    System.out.println("The following recommendations from model "+$model.getName()+" were VETOED:");
+    for (JCpSimParameter p : $mrv.getVetoedChanges().keySet()){
+        System.out.println("\t-Change "+p+" to "+$mrv.getVetoedChanges().get(p)+": "+$mrv.getVetoedReasons().get(p));
+    }
+end
+
+rule '[Manager] Discard Recommendations from non Active Models'
+salience -100
+when
+    $model: DiseaseModel(active == false)
+    $recommendation: ModelRecommendation(model == $model, notEmpty == true)
+then
+    System.out.println("Discarding Recommendation for model "+$model.getName());
+    $recommendation.clear();
+    modify($recommendation){
+        clear()
+    }
+end
+
+
+
+/*********************************************************
+                    MODEL MANAGEMENT
+*********************************************************/
+/*
+rule '[Manager] Add DiseaseModelTotalWeight for Model'
+salience 100
+when
+    $model: DiseaseModel()
+    not DiseaseModelTotalWeight(model == $model)
+then
+    insert( new DiseaseModelTotalWeight($model, 0.0));
+end
+
+rule '[Manager] Calculate Total Model Weight'
+no-loop true
+when
+    $model: DiseaseModel()
+    $dtm: DiseaseModelTotalWeight(model == $model)
+    $modelWeight: Double() from accumulate(
+        $c: ConstraintViolation(model == $model), sum($c.getWeight())
+    )
+then
+    modify($dtm){
+        setTotalWeight($modelWeight)
+    }
+end
+
+rule '[Manager] Switch to most performant model'
+timer (int: 3m 3m)
+when
+    not Lock(id == "Disable Automatic Model Switch")
+    $model: DiseaseModel() from accumulate(
+        $dtm: DiseaseModelTotalWeight(), bestModel($dtm) 
+    )
+then
+    System.out.println("Most Performant Model in the last 3m: "+$model);
+    manager.notifyActiveModelSwitch($model);
+end
+*/

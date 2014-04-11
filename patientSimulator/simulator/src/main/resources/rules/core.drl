@@ -1,0 +1,73 @@
+package com.cognitive.simulator;
+
+import org.drools.runtime.rule.Activation;
+import org.drools.time.SessionPseudoClock;
+
+import org.jcpsim.data.JCpSimDataManager;
+import org.jcpsim.data.JCpSimData;
+import com.cognitive.data.*;
+
+global JCpSimDataManager jCPSimClient;
+global SessionPseudoClock clock;
+global Long sampleRate;
+
+
+declare JCpSimData 
+    @role(event)
+//    @expires (10s)
+end
+
+rule "[Sim] Clean Data"
+salience -100
+when
+    $data: JCpSimData()
+then
+    //retract($data);
+end
+
+rule "[Sim] Evict Data"
+salience 1000
+when
+    EvictDataToken()
+    $data: JCpSimData()
+then
+    retract($data);
+end
+
+rule "[Sim] Stop Data Eviction"
+salience 1000
+when
+    $e: EvictDataToken()
+    not JCpSimData()
+then
+    retract($e);
+end
+
+rule "[Sim] Clean-up internal tokens"
+salience -1000
+when
+    $token: InternalToken(autoRetractable == true)
+then
+    retract ($token);
+end
+
+/*
+rule "[Sim] Log Data"
+when
+    $token: ValueModifiedToken()
+then
+    System.out.println("[Sim EXECUTOR] ->"+$token);
+end
+*/
+
+/*
+rule "[Sim] Suspend Rules" @activationListener('direct') 
+salience 1000
+when
+    $token: SuspendExecutionToken()
+    $activation : Activation()
+then
+    System.out.println("Removing activation "+$activation);
+    drools.cancelActivation( $activation );
+end
+*/

@@ -1,0 +1,70 @@
+package com.cognitive.nsf.model;
+
+import java.util.List;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+import org.jcpsim.data.JCpSimDataManager;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.model.ManualRecommendation;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+
+declare GasCalculatedTimeJCpSimData
+    @role(event)
+end
+
+declare ConstraintViolation
+    @role(event)
+end
+
+/*
+rule 'Base ARDS Expectation Rule'
+when
+    $d0: GasCalculatedTimeJCpSimData()
+    
+    $d1: GasCalculatedTimeJCpSimData(this after $d0)
+    not GasCalculatedTimeJCpSimData(this after $d0, this before $d1)
+
+    $d2: GasCalculatedTimeJCpSimData(this after $d1)
+    not GasCalculatedTimeJCpSimData(this after $d1, this before $d2)
+
+    $d3: GasCalculatedTimeJCpSimData(this after $d2)
+    not GasCalculatedTimeJCpSimData(this after $d2, this before $d3)
+then
+
+end
+
+rule 'If Vt > 6 then PaO2 will decrease' extends 'Base ARDS Expectation Rule'
+when
+    GasCalculatedTimeJCpSimData(this == $d0, data[JCpSimParameter.O_G_TIDAL_VOLUME] > 6)
+    eval($d3.getData().get(JCpSimParameter.O_PO2) >= $d0.getData().get(JCpSimParameter.O_PO2))
+then
+    System.out.println("CV -> "+drools.getRule().getName());
+end
+
+rule 'If Vt < 4 then PaO2 will decrease' extends 'Base ARDS Expectation Rule'
+when
+    GasCalculatedTimeJCpSimData(this == $d0, data[JCpSimParameter.O_G_TIDAL_VOLUME] < 4)
+    eval($d3.getData().get(JCpSimParameter.O_PO2) >= $d0.getData().get(JCpSimParameter.O_PO2))
+then
+    System.out.println("CV -> "+drools.getRule().getName());
+end
+*/
+
+rule 'ABC'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate : lastActivationDate)
+    $gases: List(size >= 6) from collect( GasCalculatedTimeJCpSimData(this after $lastActivationDate) over window:length (6))
+    $violations: List(size == 3) from collect( ConstraintViolation(this after $lastActivationDate, model == $model) over window:length (3))
+then
+    System.out.print("6 FOUND!: ");
+    for (Object o : $gases){
+        System.out.print(o);
+    }
+    System.out.println("");
+end

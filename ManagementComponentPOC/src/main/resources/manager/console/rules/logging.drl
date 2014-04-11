@@ -1,0 +1,43 @@
+package com.cognitive.nsf.management.console;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.log.FileLogger;
+
+rule '[Management Console] Manager Console Log Data'
+salience 8
+when
+    $data: GasCalculatedTimeJCpSimData()
+    $lastRecommendation: ModelRecommendationApplied(this before $data)
+    not ModelRecommendationApplied(this after $lastRecommendation)
+then
+    FileLogger.getInstance().logData($data.getData(), $lastRecommendation);
+end
+
+rule '[Management Console] Manager Console Log Recommendation Applied'
+salience 10
+when
+    $lastRecommendation: ModelRecommendationApplied()
+then
+    FileLogger.getInstance().logData($lastRecommendation);
+end
+
+//TODO: this rule is not working
+rule '[Management Console] Manager Console Log NO Recommendation Applied'
+salience 10
+when
+    $model: DiseaseModel(active == true)
+    $oldData: GasCalculatedTimeJCpSimData()
+    $newData: GasCalculatedTimeJCpSimData(this after $oldData)
+    not GasCalculatedTimeJCpSimData(this != $oldData, this != $newData, this after $oldData, this before $newData)
+    not ModelRecommendationApplied(this after $oldData, this before $newData)
+then
+    FileLogger.getInstance().logMissingRecommendation($oldData.getData(),$model);
+end

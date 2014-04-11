@@ -1,0 +1,14 @@
+--- /home/frank/software/cvs/piccolo.java/extras/edu/umd/cs/piccolox/pswing/PSwing.java	2007-04-19 14:25:41.000000000 +0200
++++ PSwing.java	2007-04-22 15:57:49.000000000 +0200
+@@ -488,6 +488,11 @@
+                         break;
+                     }
+                 }
++            } else if( parent instanceof PCamera ) {
++                PCamera cam = (PCamera)parent;
++                if( cam.getComponent() instanceof PSwingCanvas ) {
++                    updateCanvas( (PSwingCanvas)cam.getComponent() );
++                }
+             }
+             p = p.getParent();
+         }

@@ -1,0 +1,164 @@
+package com.cognitive.nsf.management;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.control.Lock;
+
+
+global Manager manager;
+
+rule 'Patient Safety Base'
+when
+    not Lock(id == "Patient Safety")
+then
+end
+
+
+//// PATIENT ACCEPTABLE /////
+
+rule 'Patient Acceptable Ph is [7.25,7.30) and (7.45,7.50]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PH],
+        (data[JCpSimParameter.O_PH] >= 7.25 && <  7.30) ||
+        (data[JCpSimParameter.O_PH] >  7.45 && <= 7.50)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PH, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Acceptable PaO2 is [45,55) and (90,120]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PO2],
+        (data[JCpSimParameter.O_PO2] >= 45 && <  55) ||
+        (data[JCpSimParameter.O_PO2] >  90 && <= 120)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PO2, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Acceptable PaCO2 is [35,60) and (50,60]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PCO2],
+        (data[JCpSimParameter.O_PCO2] >= 30 && <  35) ||
+        (data[JCpSimParameter.O_PCO2] >  55 && <= 60)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PCO2, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Acceptable TV/WEIGHT is [2,4) and (10,12]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_TV_WEIGHT],
+        (data[JCpSimParameter.O_TV_WEIGHT] >= 2 && <  4) ||
+        (data[JCpSimParameter.O_TV_WEIGHT] >  10 && <= 12)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_TV_WEIGHT, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+
+
+
+//// PATIENT DANGEROUS /////
+
+
+rule 'Patient Dangerous Ph is [6.90,7.25) and (7.50, 7.60]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PH],
+        (data[JCpSimParameter.O_PH] >= 6.90 && <  7.25) ||
+        (data[JCpSimParameter.O_PH] >  7.50 && <= 7.60)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PH, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Dangerous PaO2 is [35,45) and (120,999]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PO2],
+        (data[JCpSimParameter.O_PO2] >= 35 && <  45) ||
+        (data[JCpSimParameter.O_PO2] >  120)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PO2, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Dangerous PaCO2 is [20,30) and (60,120]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PCO2],
+        (data[JCpSimParameter.O_PCO2] >= 20 && <  30) ||
+        (data[JCpSimParameter.O_PCO2] >  60 && <= 120)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PCO2, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Dangerous TV/WEIGHT is [0,2) and (12,16]' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_TV_WEIGHT],
+        (data[JCpSimParameter.O_TV_WEIGHT] >= 0 && <  2) ||
+        (data[JCpSimParameter.O_TV_WEIGHT] >  12 && <= 16)
+    )   
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_TV_WEIGHT, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+
+//// PATIENT PHYSIOLOGY /////
+
+
+rule 'Patient Physiology Ph is < 6.9 and > 7.60' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PH],
+        (data[JCpSimParameter.O_PH] <  6.90) ||
+        (data[JCpSimParameter.O_PH] >  7.60)
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PH, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+rule 'Patient Physiology PaO2 is < 35' extends 'Patient Safety Base'
+when
+    $model: DiseaseModel(active == true, $lastActivationDate: lastActivationDate)
+    GasCalculatedTimeJCpSimData(this after $lastActivationDate, $v: data[JCpSimParameter.O_PO2],
+        data[JCpSimParameter.O_PO2] < 35
+    )
+then
+    ConstraintViolation constraintViolation = ConstraintViolation.newSoftConstraintViolation(JCpSimParameter.O_PO2, (Double)$v, 0, drools.getRule().getName(), $model);
+    //insert(constraintViolation);
+end
+
+
+
+
+
+
+
+
+
+
+

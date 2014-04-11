@@ -1,0 +1,23 @@
+package com.cognitive.nsf.management;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+
+
+global Manager manager;
+
+
+rule 'Fail if there are 2 active Models at any given time'
+salience 100
+when
+    $model1: DiseaseModel(active == true)
+    $model2: DiseaseModel(this != $model1, active == true)
+then
+    String message = $model1.getName()+" and "+$model1.getName()+" ACTIVE at the same time!";
+    throw new RuntimeException(message);
+end

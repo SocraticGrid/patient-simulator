@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+OpenIDE-Module-Layer: com/cognitive/jcpsimsimulator/layer.xml
+OpenIDE-Module-Localizing-Bundle: com/cognitive/jcpsimsimulator/Bundle.properties

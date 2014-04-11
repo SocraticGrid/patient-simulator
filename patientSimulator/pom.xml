@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.cognitive.nsf.patientsimulator</groupId>
+    <artifactId>patient-simulator-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Patient Simulator</name>
+    <properties>
+        <project.version>1.0-SNAPSHOT</project.version>
+    </properties>
+    <modules>
+        <module>jcp-sim</module>
+        <module>vo2-calculator</module>
+        <module>simulator</module>
+  </modules>
+
+    <dependencyManagement>
+    	<dependencies>
+		<dependency>
+			<groupId>com.cognitive.nsf.patientsimulator</groupId>
+			<artifactId>jcpsim</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.cognitive.nsf.patientsimulator</groupId>
+			<artifactId>vo2-calculator</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+	</dependencies>
+    </dependencyManagement>
+
+    <repositories>
+        <repository>
+            <id>jboss</id>
+            <name>jboss</name>
+            <url>https://repository.jboss.org/nexus/content/groups/public/</url>
+        </repository>
+    </repositories>
+      
+</project>

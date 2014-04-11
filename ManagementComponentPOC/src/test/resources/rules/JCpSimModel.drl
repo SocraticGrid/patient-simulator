@@ -1,0 +1,52 @@
+package com.cognitive.nsf.model;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+import org.jcpsim.data.JCpSimDataManager;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.model.ManualRecommendation;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+
+
+global JCpSimDataManager auxProvider;
+
+
+rule 'Manual Recommendation'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model)
+    $r: ManualRecommendation($parameter: parameter, $value: value)
+then
+    System.out.println("Setting "+$r.getParameter()+" to "+$r.getValue());
+
+    modify($recommendation){
+        addRecommendation($parameter, $value, "Manual Recommendation")
+    }
+
+end
+
+rule 'Recommend using JCpSim AUX'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model)
+    GasCalculatedTimeJCpSimData()
+then
+    JCpSimData auxData = auxProvider.getData();
+    System.out.println("Setting PIP to "+auxData.get(JCpSimParameter.V_PIP));
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PIP, auxData.get(JCpSimParameter.V_PIP), "Recommend using JCpSim AUX")
+    }
+
+end
+
+rule 'Cleanup Manual Recommendations'
+salience -100
+when
+     $r: ManualRecommendation()
+then
+    retract($r);
+end

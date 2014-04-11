@@ -1,0 +1,29 @@
+package com.cognitive.nsf.management;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.fact.control.Phase;
+
+
+query "queryConstraintViolationsBySource" (String $source)
+    $c: ConstraintViolation(source == $source)
+end
+
+query "queryConstraintViolations" ()
+    $c: ConstraintViolation()
+end
+
+query "queryLastGasCalculatedTimeJCpSimData" ()
+    $result: GasCalculatedTimeJCpSimData()
+    not GasCalculatedTimeJCpSimData(this after $result)
+end
+
+query "queryCurrentPhase" ()
+    $p: Phase()
+end

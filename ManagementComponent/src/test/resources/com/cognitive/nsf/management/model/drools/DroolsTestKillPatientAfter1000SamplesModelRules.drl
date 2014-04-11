@@ -1,0 +1,23 @@
+package com.cognitive.nsf.management.model.drools;
+
+import java.util.ArrayList;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+import com.cognitive.nsf.management.model.Model;
+import com.cognitive.nsf.management.model.ModelSessionManager;
+import com.cognitive.nsf.management.jcpsim.JCpSimDataUtils;
+
+global ModelSessionManager manager;
+global Model model;
+
+
+
+rule 'Set PIP to 60 after 100 data samples'
+when
+    $dataList: ArrayList(size > 50) from collect (JCpSimData()) 
+then
+    JCpSimData output = JCpSimDataUtils.cloneJCpSimData((JCpSimData)$dataList.get(0));
+    output.set(JCpSimParameter.V_PIP, 60.0);
+    manager.onResult(model, output);
+end

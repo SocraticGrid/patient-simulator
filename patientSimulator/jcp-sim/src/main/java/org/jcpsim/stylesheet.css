@@ -1,0 +1,33 @@
+/* Javadoc style sheet */
+
+body      { font-family: Verdana, sans-serif; 
+            font-size: 90%;
+            line-height: 1.2em; 
+            background-color: #ffffff; }
+
+
+h1        { font-size: 120%; }
+
+th font b { font-size: 70%; }
+
+/* Table colors */
+.TableHeadingColor     { background: #bbbbff } /* Dark mauve */
+.TableSubHeadingColor  { background: #DDDDFF } /* Light mauve */
+.TableRowColor         { background: #FFFFFF } /* White */
+
+/* Font used in left-hand frame lists */
+.FrameTitleFont   { font-size: 140%; font-family: Helvetica, Arial, sans-serif }
+.FrameHeadingFont { font-size:  90%; font-family: Helvetica, Arial, sans-serif }
+.FrameItemFont    { font-size:  90%; font-family: Helvetica, Arial, sans-serif }
+
+/* Navigation bar fonts and colors */
+.NavBarCell1    { background-color:#ddddff;} /* Light mauve */
+.NavBarCell1Rev { background-color:#00008B;} /* Dark Blue */
+.NavBarFont1    { color:#000000;}
+.NavBarFont1Rev { color:#FFFFFF;}
+
+.NavBarCell2    { background-color:#FFFFFF;}
+.NavBarCell3    { background-color:#FFFFFF;}
+
+
+

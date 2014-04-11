@@ -1,0 +1,9 @@
+package com.cognitive.nsf.management.model.drools;
+
+import com.cognitive.nsf.management.model.Model;
+import com.cognitive.nsf.management.model.ModelSessionManager;
+import org.jcpsim.data.JCpSimData;
+
+global ModelSessionManager manager;
+
+

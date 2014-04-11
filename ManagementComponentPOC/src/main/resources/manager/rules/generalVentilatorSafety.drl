@@ -1,0 +1,196 @@
+package com.cognitive.nsf.management;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.ModelRecommendation;
+import com.cognitive.nsf.management.fact.ModelRecommendationApplied;
+import com.cognitive.nsf.management.fact.UniqueJCpSimData;
+import com.cognitive.nsf.management.fact.control.Lock;
+
+global Manager manager;
+
+
+/// VENTILATOR
+
+rule 'Recommendations Safety Base'
+when
+    not Lock(id == "Recommendations Safety")
+then
+end
+
+rule 'Ventilator Fi02 MUST be greater than 21' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model, $v: recommendedValues[JCpSimParameter.V_FIO2] < 21)
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_FIO2, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_FIO2, 21.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+rule 'Ventilator Fi02 MUST be less than 100' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model, $v: recommendedValues[JCpSimParameter.V_FIO2] > 100)
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_FIO2, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_FIO2, 100.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+
+rule 'Ventilator PIP MUST be greater than 12' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model, $v: recommendedValues[JCpSimParameter.V_PIP] < 12)
+then    
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_PIP, $v, 0, drools.getRule().getName(), $model);
+    
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PIP, 12.0, drools.getRule().getName())
+    }
+
+    //insert(constraintViolation);
+end
+
+
+rule 'Ventilator PIP MUST be less than 50' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model, $v: recommendedValues[JCpSimParameter.V_PIP] > 50)
+then    
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_PIP, $v, 0, drools.getRule().getName(), $model);
+    
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PIP, 50.0, drools.getRule().getName())
+    }
+
+    //insert(constraintViolation);
+end
+
+
+rule 'Ventilator PEEP MUST be greater than 0' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model,$v: recommendedValues[JCpSimParameter.V_PEEP] < 0 )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_PEEP, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PEEP, 0.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+rule 'Ventilator PEEP MUST be less than 20' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model,$v: recommendedValues[JCpSimParameter.V_PEEP] > 20 )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_PEEP, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PEEP, 20.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+
+rule 'Ventilator RATE (V_FREQUENCY) MUST be greater than 4' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model,$v: recommendedValues[JCpSimParameter.V_FREQUENCY] < 4 )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_FREQUENCY, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_FREQUENCY, 4.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+rule 'Ventilator RATE (V_FREQUENCY) MUST be less than 50' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model,$v: recommendedValues[JCpSimParameter.V_FREQUENCY] > 50 )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_FREQUENCY, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_FREQUENCY, 50.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+
+rule 'Ventilator FLOW RATE MUST be greater than .3' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model,$v: recommendedValues[JCpSimParameter.V_FLOW_RATE] < 0.3 )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_FLOW_RATE, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_FLOW_RATE, 0.3, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+rule 'Ventilator FLOW RATE MUST be less than 4' extends 'Recommendations Safety Base'
+when
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(model == $model,$v: recommendedValues[JCpSimParameter.V_FLOW_RATE] > 4 )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_FLOW_RATE, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_FLOW_RATE, 4.0, drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end
+
+
+rule 'Ventilator PIP MUST be >= PEEP+8' extends 'Recommendations Safety Base'
+when
+    $data: UniqueJCpSimData($peep: data[JCpSimParameter.V_PEEP]) over window:length(1)
+    $model: DiseaseModel()
+    $recommendation: ModelRecommendation(
+        model == $model, 
+        $v: recommendedValues[JCpSimParameter.V_PIP] < (((Double)$peep) + 8)
+    )
+then
+
+    ConstraintViolation constraintViolation = ConstraintViolation.newHardConstraintViolation(JCpSimParameter.V_PIP, $v, 0, drools.getRule().getName(), $model);
+
+    modify($recommendation){
+        addRecommendation(JCpSimParameter.V_PIP, (((Double)$peep) + 8), drools.getRule().getName())
+    }
+    
+    //insert(constraintViolation);
+end

@@ -1,0 +1,347 @@
+package com.cognitive.nsf.management;
+
+import java.util.List;
+import java.util.Set;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimParameter;
+
+import com.cognitive.nsf.management.Manager;
+import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.fact.ConstraintViolation;
+import com.cognitive.nsf.management.fact.DiseaseModelTotalWeight;
+import com.cognitive.nsf.management.fact.GasCalculatedTimeJCpSimData;
+import com.cognitive.nsf.management.fact.control.DiseaseActionRequested;
+import com.cognitive.nsf.management.fact.control.Lock;
+import com.cognitive.nsf.management.fact.control.NoAlternativeModelFound;
+import com.cognitive.nsf.management.fact.control.Phase;
+import com.cognitive.nsf.management.fact.control.Phase.PhaseName;
+
+global Double modelThreshold;
+global Manager manager;
+
+global DiseaseModel ardsModel;
+global DiseaseModel asthmaModel;
+global DiseaseModel pneumoniaModel;
+
+global Map<String, Double> modelWeights;
+
+global List models;
+
+
+declare Last5BloodGasesInAPhase
+    @role(event)
+    phase: Phase
+    firstGas: GasCalculatedTimeJCpSimData
+    lastGas: GasCalculatedTimeJCpSimData
+end
+
+declare Last15BloodGasesInAPhase extends Last5BloodGasesInAPhase
+    @role(event)
+end
+
+declare ConstraintViolationCalculationResult
+    model : DiseaseModel
+    weight: Double
+    constraintsViolations: Set
+end
+
+declare PreviousConstraintViolationCalculationResult
+    results : ConstraintViolationCalculationResult
+end
+
+declare FirstConstraintViolationCalculationResult
+    results : ConstraintViolationCalculationResult
+end
+
+declare NoMoreModelsToEvaluate
+end
+
+rule '[Manager Lifecycle] Populate model globals'
+when
+    $ards:      DiseaseModel(name == 'ARDS')
+    $asthma:    DiseaseModel(name == 'Asthma')
+    $pneumonia: DiseaseModel(name == 'Pneumonia')
+    not Lock(id == "Populate model globals")
+then
+    insert( new Lock("Populate model globals")); 
+    drools.getWorkingMemory().setGlobal("ardsModel",$ards);
+    drools.getWorkingMemory().setGlobal("asthmaModel",$asthma);
+    drools.getWorkingMemory().setGlobal("pneumoniaModel",$pneumonia);
+    drools.getWorkingMemory().setGlobal("modelWeights",new HashMap());
+end
+
+rule '[Manager Lifecycle] Store Model CVs'
+salience 10
+when
+    ConstraintViolationCalculationResult($model: model, $w: weight)
+then
+    modelWeights.put($model.getName(), $w);
+end
+
+rule '[Manager Lifecycle] Detect last 5 Blood Gases in a Phase'
+when
+    $phase: Phase($activationDate: activationDate)
+    $gases: List(size == 5) from collect( GasCalculatedTimeJCpSimData(this after $activationDate, data[JCpSimParameter.O_G_GAS_CALCULATED] != 2) over window:length(5) )
+then
+    insert(new Last5BloodGasesInAPhase($phase, (GasCalculatedTimeJCpSimData)$gases.get(0), (GasCalculatedTimeJCpSimData)$gases.get(4)));
+end
+
+rule '[Manager Lifecycle] Detect last 15 Blood Gases in a Phase'
+when
+    $phase: Phase($activationDate: activationDate)
+    $gases: List(size == 15) from collect( GasCalculatedTimeJCpSimData(this after $activationDate, data[JCpSimParameter.O_G_GAS_CALCULATED] != 2) over window:length(15) )
+then
+    insert(new Last15BloodGasesInAPhase($phase, (GasCalculatedTimeJCpSimData)$gases.get(0), (GasCalculatedTimeJCpSimData)$gases.get(14)));
+end
+
+rule '[Manager Lifecycle] Clean Last5BloodGasesInAPhase not belonging to current phase'
+when
+    $l: Last5BloodGasesInAPhase($phase: phase)
+    not Phase(this == $phase)
+then
+    retract($l);
+end
+
+rule '[Manager Lifecycle] Clean Last15BloodGasesInAPhase not belonging to current phase'
+when
+    $l: Last15BloodGasesInAPhase($phase: phase)
+    not Phase(this == $phase)
+then
+    retract($l);
+end
+
+
+
+rule '[Manager Lifecycle] Detect threshold violation while ventilator is being managed'
+when
+    $l: Last5BloodGasesInAPhase(phase.name == PhaseName.NORMAL, $firstGas: firstGas.timestamp, $lastGas: lastGas.timestamp)
+    $n: Double(doubleValue >= modelThreshold) from accumulate(
+        $c: ConstraintViolation(this after $firstGas,this before $lastGas, $weight: weight), 
+        sum($weight)
+    )
+then
+    //pause disease
+    DiseaseActionRequested pauseDiseaseRequest = new DiseaseActionRequested(DiseaseActionRequested.Action.PAUSE_DISEASE);
+    manager.requestDiseaseAction(pauseDiseaseRequest);
+
+    retract($l);
+    retract($l.getPhase());
+    insert(new Phase(PhaseName.STABILIZATION, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end
+
+
+rule '[Manager Lifecycle] Stabilize patient'
+when
+    $l: Last5BloodGasesInAPhase(phase.name == PhaseName.STABILIZATION)
+then
+    retract($l);
+    retract($l.getPhase());
+    insert(new Phase(PhaseName.CALCULATE_VIOLATIONS, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end
+
+
+rule '[Manager Lifecycle] Calculate CV of last 5 Blood Gases'
+when
+    $l: Last5BloodGasesInAPhase(phase.name == PhaseName.CALCULATE_VIOLATIONS, $firstGas: firstGas.timestamp, $lastGas: lastGas.timestamp)
+    $model: DiseaseModel(active == true)
+    accumulate(
+        $c: ConstraintViolation(this after $firstGas,this before $lastGas, $weight: weight); 
+        $n: sum($weight),
+        $s: collectSet($c)
+    )
+then
+    Set $copy = new java.util.HashSet();
+    $copy.addAll($s);
+
+    retract($l);
+    insert(new ConstraintViolationCalculationResult($model, $n.doubleValue(), $copy));
+end
+
+rule '[Manager Lifecycle] Evaluate First Model CVs'
+when
+    $m: DiseaseModel(active == true)
+    $p: Phase(name == PhaseName.CALCULATE_VIOLATIONS)
+    $c: ConstraintViolationCalculationResult()
+    not PreviousConstraintViolationCalculationResult()
+then
+    //Reset model's stack and switch to next model
+    resetModelStack(drools, $m);
+    DiseaseModel nextModel = getNextModel(drools, $m);
+    manager.setActiveModel(nextModel);
+    manager.notifyActiveModelSwitch(nextModel);
+
+    insert(new PreviousConstraintViolationCalculationResult($c));
+    insert(new FirstConstraintViolationCalculationResult($c));
+    retract($c);
+    retract($p);
+    insert(new Phase(PhaseName.STABILIZATION, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end
+
+rule '[Manager Lifecycle] Compare Models CVs: The new model performs worst than the previous'
+when
+    $m: DiseaseModel(active == true)
+    $p: Phase(name == PhaseName.CALCULATE_VIOLATIONS)
+    $prev: PreviousConstraintViolationCalculationResult()
+    $c: ConstraintViolationCalculationResult(weight > $prev.results.weight)
+then
+
+    //clean-up
+    retract($c);
+    retract($p);
+
+
+    //switch model
+    PhaseName nextPhaseName = PhaseName.STABILIZATION;
+    DiseaseModel nextModel = getNextModel(drools, $m);
+    if (nextModel == null){
+        nextPhaseName = PhaseName.UNDEFINED;
+        retract($prev);
+        insert(new NoMoreModelsToEvaluate());
+    } else{
+        manager.setActiveModel(nextModel);
+        manager.notifyActiveModelSwitch(nextModel);
+    }
+
+
+    //change phase
+    insert(new Phase(nextPhaseName, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end
+
+rule '[Manager Lifecycle] Compare Models CVs: The new model performs better than the previous but its weight is grater that threshold'
+when
+    $m: DiseaseModel(active == true)
+    $p: Phase(name == PhaseName.CALCULATE_VIOLATIONS)
+    $prev: PreviousConstraintViolationCalculationResult()
+    $c: ConstraintViolationCalculationResult(weight < $prev.results.weight, weight > modelThreshold)
+then
+
+    //clean-up
+    retract($c);
+    retract($prev);
+    retract($p);
+
+    //update the PreviousConstraintViolationCalculationResult
+    insert(new PreviousConstraintViolationCalculationResult($c));
+
+    //switch model
+    PhaseName nextPhaseName = PhaseName.STABILIZATION;
+    DiseaseModel nextModel = getNextModel(drools, $m);
+    if (nextModel == null){
+        nextPhaseName = PhaseName.UNDEFINED;
+        insert(new NoMoreModelsToEvaluate());
+    }else{
+        manager.setActiveModel(nextModel);
+        manager.notifyActiveModelSwitch(nextModel);
+    }
+
+    //change phase
+    insert(new Phase(nextPhaseName, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end
+
+rule '[Manager Lifecycle] Compare Models CVs: The new model performs better than the previous and its weight is less that threshold'
+when
+    $p: Phase(name == PhaseName.CALCULATE_VIOLATIONS)
+    $prev: PreviousConstraintViolationCalculationResult()
+    $c: ConstraintViolationCalculationResult(weight < $prev.results.weight, weight < modelThreshold)
+then
+
+    //clean-up
+    retract($c);
+    retract($prev);
+    retract($p);
+
+    //resume disease
+    DiseaseActionRequested resumeDiseaseRequest = new DiseaseActionRequested(DiseaseActionRequested.Action.RESUME_DISEASE);
+    manager.requestDiseaseAction(resumeDiseaseRequest);
+
+    //change phase
+    insert(new Phase(PhaseName.NORMAL, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end
+   
+
+rule '[Manager Lifecycle] No more models to evaluate but first model performs better than threshold'
+when
+    $p: Phase()
+    $m: DiseaseModel(active == true)
+    $n: NoMoreModelsToEvaluate()
+    $f: FirstConstraintViolationCalculationResult(results.weight < modelThreshold)
+then
+    retract($n);
+    retract($f);
+    retract($p);
+    
+    //Go back to first model
+    manager.setActiveModel($f.getResults().getModel());
+    manager.notifyActiveModelSwitch($f.getResults().getModel());
+
+    //resume disease
+    DiseaseActionRequested resumeDiseaseRequest = new DiseaseActionRequested(DiseaseActionRequested.Action.RESUME_DISEASE);
+    manager.requestDiseaseAction(resumeDiseaseRequest);
+
+    //change phase
+    insert(new Phase(PhaseName.NORMAL, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end 
+
+rule '[Manager Lifecycle] No more models to evaluate but first model performs worst than threshold'
+when
+    $m: DiseaseModel(active == true)
+    $n: NoMoreModelsToEvaluate()
+    $f: FirstConstraintViolationCalculationResult(results.weight >= modelThreshold)
+then
+    retract($n);
+    retract($f);
+    insert(new NoAlternativeModelFound($m, modelWeights));
+end
+
+
+rule '[Manager Lifecycle] Extended Patient Stabilization'
+when
+    $l: Last15BloodGasesInAPhase(phase.name == PhaseName.EXTENDED_STABILIZATION)
+then
+    retract($l);
+    retract($l.getPhase());
+    insert(new Phase(PhaseName.CALCULATE_VIOLATIONS, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+end 
+
+
+
+
+
+
+function void resetModelStack(org.drools.spi.KnowledgeHelper drools, DiseaseModel currentModel){
+    DiseaseModel ardsModel = (DiseaseModel)drools.getWorkingMemory().getGlobal("ardsModel");
+    DiseaseModel asthmaModel = (DiseaseModel)drools.getWorkingMemory().getGlobal("asthmaModel");
+    DiseaseModel pneumoniaModel = (DiseaseModel)drools.getWorkingMemory().getGlobal("pneumoniaModel");
+
+
+    java.util.List models = new java.util.ArrayList();
+    if (currentModel == ardsModel){
+        models.add(asthmaModel);
+        models.add(pneumoniaModel);
+    } else if (currentModel == asthmaModel){
+        models.add(pneumoniaModel);
+        models.add(ardsModel);
+    } else{
+        models.add(ardsModel);
+        models.add(asthmaModel);
+    }
+
+    drools.getWorkingMemory().setGlobal("models", models);
+
+}
+
+function DiseaseModel getNextModel(org.drools.spi.KnowledgeHelper drools, DiseaseModel currentModel){
+
+    java.util.List models = (java.util.List)drools.getWorkingMemory().getGlobal("models");
+    
+    if (models.isEmpty()){
+        return null;
+    }
+
+    return (DiseaseModel) models.remove(0);
+
+}
