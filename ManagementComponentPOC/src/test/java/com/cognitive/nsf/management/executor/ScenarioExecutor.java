@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cognitive.simulator.executor;
+package com.cognitive.nsf.management.executor;
 
 import com.cognitive.SimulationExecutor;
 import com.cognitive.jcpsimsimulator.runtime.Expectation;
@@ -26,12 +26,10 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimParameter;
 import org.jcpsim.gui.TopMenu;
-import org.jcpsim.jmx.JCpSimMgmt;
+import org.jcpsim.jmx.JCpSimCustomRespiratorMgmt;
 import org.jcpsim.jmx.JCpSimTopMenuMgmt;
 import org.jcpsim.jmx.JCpSimTopMenuMgmtMBean;
 import org.jcpsim.jmx.client.JCpSimPollingClient;
@@ -86,6 +84,9 @@ public class ScenarioExecutor {
             }
 
             public void onPause() {
+            }
+
+            public void onTermination() {
             }
         });
         
@@ -210,7 +211,7 @@ public class ScenarioExecutor {
         
         //Aux JCpSim
         try{
-            jcpSimAuxClient = new JCpSimPollingClient(Global.MODE.AUX.getJMXUrl(), JCpSimMgmt.OBJECT_NAME+"_"+Global.MODE.AUX);
+            jcpSimAuxClient = new JCpSimPollingClient(Global.MODE.AUX.getJMXUrl(), JCpSimCustomRespiratorMgmt.OBJECT_NAME+"_"+Global.MODE.AUX);
         } catch (Exception e){
             
         }

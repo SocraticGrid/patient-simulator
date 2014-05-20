@@ -47,6 +47,9 @@ public class SuspendTest {
 
             public void onPause() {
             }
+
+            public void onTermination() {
+            }
         });
         executor.setDebug(true);
         

@@ -5,6 +5,7 @@
 package com.cognitive;
 
 import com.cognitive.data.EvictDataToken;
+import com.cognitive.data.SimulationClockToken;
 import com.cognitive.data.SuspendExecutionToken;
 import com.cognitive.template.SimulationTemplateEngine;
 import java.io.IOException;
@@ -48,7 +49,7 @@ import org.jcpsim.data.JCpSimDataManager;
 import org.jcpsim.data.JCpSimParameter;
 import org.jcpsim.jmx.JCpSimClockMgmt;
 import org.jcpsim.jmx.JCpSimClockMgmtMBean;
-import org.jcpsim.jmx.JCpSimMgmt;
+import org.jcpsim.jmx.JCpSimCustomRespiratorMgmt;
 import org.jcpsim.jmx.client.JCpSimPollingClient;
 import org.jcpsim.run.Global;
 
@@ -74,17 +75,26 @@ public class SimulationExecutor {
     private Map<JCpSimParameter, Double> initialParameterValues = new EnumMap<JCpSimParameter, Double>(JCpSimParameter.class);
     private StatefulKnowledgeSession ksession;
     private boolean debug;
+    private boolean randomizeStep;
 
     public static interface SimulationListener {
 
         void onStep(int time);
         void onException(Exception e);
         void onPause();
+        void onTermination();
     }
     
     public SimulationExecutor(SimulationTemplateEngine engine, SimulationListener simulationListener) {
         this.engine = engine;
         this.simulationListener = simulationListener;
+        this.createKBase();
+    }
+    
+    public SimulationExecutor(SimulationTemplateEngine engine, SimulationListener simulationListener, long step) {
+        this.engine = engine;
+        this.simulationListener = simulationListener;
+        this.step = step;
         this.createKBase();
     }
 
@@ -94,7 +104,7 @@ public class SimulationExecutor {
 
     public void executeJMX(String simConnectionURL) {
         try {
-            JCpSimPollingClient simClient = new JCpSimPollingClient(simConnectionURL,JCpSimMgmt.OBJECT_NAME+"_"+Global.MODE.SIM);
+            JCpSimPollingClient simClient = new JCpSimPollingClient(simConnectionURL, JCpSimCustomRespiratorMgmt.OBJECT_NAME+"_"+Global.MODE.SIM);
             this.execute(simClient);
         } catch (IOException ex) {
             Logger.getLogger(SimulationExecutor.class.getName()).log(Level.SEVERE, null, ex);
@@ -171,15 +181,16 @@ public class SimulationExecutor {
                             
                             if (data.getTime() != lastTime){
                                 lastTime = data.getTime();
+                                
                                 paused = false;
                                 pauseAlreadyNotified = false;
                                 long timeDelta = data.getTime()-clock.getCurrentTime()-offset;
                                 clock.advanceTime(timeDelta, TimeUnit.MILLISECONDS);
                                 
+                                t+=timeDelta;
+                                ksession.insert(new SimulationClockToken(t, timeDelta, data));
                                 ksession.insert(data);
-                                
                                 if (simulationListener != null) {
-                                    t+=timeDelta;
                                     simulationListener.onStep(t);
                                 }
                             } else {
@@ -195,12 +206,12 @@ public class SimulationExecutor {
                                     pauseAlreadyNotified = true;
                                 }
                             }
-                            Thread.sleep(step);
+                            Thread.sleep(SimulationExecutor.this.getTimeToSleep());
                         }
                         ksession.halt();
 
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(SimulationExecutor.class.getName()).log(Level.SEVERE, null, ex);
+                    //} catch (InterruptedException ex) {
+                    //    Logger.getLogger(SimulationExecutor.class.getName()).log(Level.SEVERE, null, ex);
                     } catch (Exception ex){
                         if (simulationListener != null){
                             //stop();
@@ -214,11 +225,29 @@ public class SimulationExecutor {
 
             ksession.fireUntilHalt();
             stop = true;
+            
+            if (this.simulationListener != null){
+                this.simulationListener.onTermination();
+            }
+            
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
+    private long getRandom(long max , long min){
+        long ii = -min + (long) (Math.random() * ((max - (-min)) + 1));
+        return ii;
+    }
+    
+    private long getTimeToSleep(){
+        if (this.randomizeStep){
+            return step+(this.getRandom(step/10, -step/10));
+        } else{
+            return step;
+        }
+    }
+    
     public long getSimulationExecutionTime() {
         //TODO: create a propper drools -> milliseconds convertor
         int time = Integer.parseInt(engine.getSimulationTime().substring(0, engine.getSimulationTime().length() - 1));
@@ -287,6 +316,10 @@ public class SimulationExecutor {
         this.globals.remove(name);
     }
 
+    public void setRandomizeStep(boolean randomizeStep){
+        this.randomizeStep = randomizeStep;
+    }
+    
     public void setDebug(boolean debug) {
         this.debug = debug;
     }

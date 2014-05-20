@@ -67,5 +67,9 @@ public class MockJCpSimDataManager implements JCpSimDataManager{
     public synchronized void set(JCpSimParameter parameter, double value) {
         data.set(parameter, value);
     }
+
+    public String getDataAsString() {
+        return "MOCK";
+    }
     
 }

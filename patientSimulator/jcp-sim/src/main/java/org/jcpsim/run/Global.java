@@ -35,13 +35,11 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
 
 import javax.swing.JApplet;
 
 import org.jcpsim.gui.MenuBar;
 import org.jcpsim.gui.StatusLine;
-import org.jcpsim.piccolo.putil;
 import org.jcpsim.scenarios.SimpleRespirator;
 import org.jcpsim.scenarios.ArterialLine;
 import org.jcpsim.scenarios.PkPd;
@@ -62,13 +60,10 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnectorServer;
 import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
-import org.jcpsim.gui.InputElement;
-import org.jcpsim.gui.OutputElement;
 import org.jcpsim.gui.TopMenu;
+import org.jcpsim.jmx.JCpSimArterialLineMgmt;
 import org.jcpsim.jmx.JCpSimClockMgmt;
-import org.jcpsim.jmx.JCpSimClockMgmtMBean;
-import org.jcpsim.jmx.JCpSimMgmt;
-import org.jcpsim.jmx.JCpSimMgmtMBean;
+import org.jcpsim.jmx.JCpSimCustomRespiratorMgmt;
 import org.jcpsim.scenarios.CustomRespirator;
 
 /**
@@ -309,19 +304,23 @@ public final class Global {
         if (name == null) {
             name = "";
         }
+        
+        initClockMBeanServer();
+        
         logger.info("Setting scenario; " + name);
         if (scenario != null) {
             canvas.getLayer().removeChild(scenario);
         }
         if ("ArterialLine".equals(name)) {
-            scenario = new ArterialLine(this);
+            scenario = new ArterialLine(this, PUtil.clock);
+            initArterialLineMBeanServer((ArterialLine) scenario);
         } else if ("PkPd".equals(name)) {
             scenario = new PkPd(this);
         } else if ("SimpleRespirator".equals(name)) {
             scenario = new SimpleRespirator(this);
         } else {
             scenario = new CustomRespirator(this, PUtil.clock);
-            initMBeanServer((CustomRespirator) scenario);
+            initCustomRespiratorMBeanServer((CustomRespirator) scenario);
         }
 
         canvas.getLayer().addChild(scenario);
@@ -456,26 +455,29 @@ public final class Global {
     public  boolean activated = false; // used in FrontpanelElement
     private  boolean jMXConnectorServerStarted;
 
-    private void initMBeanServer(CustomRespirator scenario) {
-        
+    private void initClockMBeanServer(){
+        this.initMBeanServer(JCpSimClockMgmt.OBJECT_NAME+"_"+mode, new JCpSimClockMgmt(PUtil.clock));
+    }
+    
+    private void initArterialLineMBeanServer(ArterialLine arterialLine){
+        this.initMBeanServer(JCpSimArterialLineMgmt.OBJECT_NAME+"_"+mode, new JCpSimArterialLineMgmt(arterialLine));
+    }
+    
+    private void initCustomRespiratorMBeanServer(CustomRespirator customRespirator){
+        this.initMBeanServer(JCpSimCustomRespiratorMgmt.OBJECT_NAME+"_"+mode, new JCpSimCustomRespiratorMgmt(customRespirator));
+    }
+    
+    private void initMBeanServer(String objectName, Object mBean) {
         try {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            ObjectName mgmntMBeanName = new ObjectName(JCpSimMgmt.OBJECT_NAME+"_"+mode);
-            ObjectName clockMgmntMBeanName = new ObjectName(JCpSimClockMgmt.OBJECT_NAME+"_"+mode);
-
-            JCpSimMgmtMBean mgmntMbean = new JCpSimMgmt(scenario);
-            JCpSimClockMgmtMBean clockMgmntMbean = new JCpSimClockMgmt(PUtil.clock);
-
+            ObjectName mgmntMBeanName = new ObjectName(objectName);
+            
             if (mbs.isRegistered(mgmntMBeanName)) {
                 mbs.unregisterMBean(mgmntMBeanName);
             }
-            if (mbs.isRegistered(clockMgmntMBeanName)) {
-                mbs.unregisterMBean(clockMgmntMBeanName);
-            }
-
-            mbs.registerMBean(mgmntMbean, mgmntMBeanName);
-            mbs.registerMBean(clockMgmntMbean, clockMgmntMBeanName);
-
+            
+            mbs.registerMBean(mBean, mgmntMBeanName);
+            
             if (!jMXConnectorServerStarted) {
                 try{
                     java.rmi.registry.LocateRegistry.createRegistry(mode.JMXPort);
@@ -490,9 +492,8 @@ public final class Global {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
-         
     }
-
+    
     // --------------------------------------------------------------------------
     /**
      * Single line log record.

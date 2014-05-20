@@ -14,9 +14,10 @@ import org.jcpsim.clock.ClockEvent;
 import org.jcpsim.clock.ClockEventListener;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimParameter;
-import org.jcpsim.jmx.JCpSimMgmt;
+import org.jcpsim.jmx.JCpSimCustomRespiratorMgmt;
 import org.jcpsim.jmx.JCpSimTopMenuMgmt;
 import org.jcpsim.run.Global;
+import org.jcpsim.scenarios.ArterialLine;
 import org.jcpsim.scenarios.CustomRespirator;
 
 /**
@@ -30,6 +31,9 @@ public class TopMenu extends javax.swing.JPanel implements ClockEventListener{
     
     private CustomRespirator mainRespirator;
     private CustomRespirator auxRespirator;
+    
+    private ArterialLine arterialLine;
+    
     private JCpSimTopMenuMgmt mgmntMbean;
     
     /**
@@ -50,6 +54,17 @@ public class TopMenu extends javax.swing.JPanel implements ClockEventListener{
                 this.mainRespirator = respirator;
                 respirator.getClock().addClockChangeListener(this);
                 break;
+        }
+        
+    }
+    public void registerArterialLine(Global.MODE mode, ArterialLine arterialLine){
+        switch (mode){
+            case SIM:
+                this.arterialLine = arterialLine;
+                arterialLine.getClock().addClockChangeListener(this);
+                break;
+            default:
+                throw new RuntimeException("MODE '"+mode+"' not supported in ArterialLine");
         }
         
     }
@@ -131,14 +146,29 @@ public class TopMenu extends javax.swing.JPanel implements ClockEventListener{
 
     private void btnPauseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPauseActionPerformed
         if (btnPause.isSelected()){
-            this.mainRespirator.getClock().pause();
+            if (this.mainRespirator != null){
+                this.mainRespirator.getClock().pause();
+            }
+            if (this.arterialLine != null){
+                this.arterialLine.getClock().pause();
+            }
         } else{
-            this.mainRespirator.resume();
+            if (this.mainRespirator != null){
+                this.mainRespirator.resume();
+            }
+            if (this.arterialLine != null){
+                this.arterialLine.getClock().resume();
+            }
         }
     }//GEN-LAST:event_btnPauseActionPerformed
 
     private void btnRequestPauseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRequestPauseActionPerformed
-        this.mainRespirator.requestPause();
+        if (this.mainRespirator != null){
+            this.mainRespirator.requestPause();
+        }
+        if (this.arterialLine != null){
+            this.arterialLine.requestPause();
+        }
         this.btnRequestPause.setText("Pause Requested");
         this.btnRequestPause.setEnabled(false);
     }//GEN-LAST:event_btnRequestPauseActionPerformed
@@ -196,17 +226,27 @@ public class TopMenu extends javax.swing.JPanel implements ClockEventListener{
         this.cboSimulationId.setSelectedItem(simulationId);
         
         
-        this.mainRespirator.resetCurrentSimulationTime();
+        if (mainRespirator != null){
+            this.mainRespirator.resetCurrentSimulationTime();
+        }
         if (auxRespirator != null){
             this.auxRespirator.resetCurrentSimulationTime();
+        }
+        if (arterialLine != null){
+            this.arterialLine.resetCurrentSimulationTime();
         }
     }
     
     public void onSimulationStopped(String simulationId){
         this.cboSimulationId.removeItem(simulationId);
-        this.mainRespirator.stopCurrentSimulationTime();
+        if (mainRespirator != null){
+            this.mainRespirator.stopCurrentSimulationTime();
+        }
         if (auxRespirator != null){
             this.auxRespirator.stopCurrentSimulationTime();
+        }
+        if (arterialLine != null){
+            this.arterialLine.stopCurrentSimulationTime();
         }
     }
     
@@ -231,8 +271,8 @@ public class TopMenu extends javax.swing.JPanel implements ClockEventListener{
     
     private void copyParameters(CustomRespirator src, CustomRespirator target){
         
-        JCpSimMgmt srcMgmt = new JCpSimMgmt(src);
-        JCpSimMgmt targetMgmt = new JCpSimMgmt(target);
+        JCpSimCustomRespiratorMgmt srcMgmt = new JCpSimCustomRespiratorMgmt(src);
+        JCpSimCustomRespiratorMgmt targetMgmt = new JCpSimCustomRespiratorMgmt(target);
         
         JCpSimData srcData = srcMgmt.getData();
         for (JCpSimParameter parameter : JCpSimParameter.values()) {

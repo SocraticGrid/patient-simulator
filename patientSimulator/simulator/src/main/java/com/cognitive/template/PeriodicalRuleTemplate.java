@@ -8,7 +8,15 @@ import java.util.UUID;
 import org.jcpsim.data.JCpSimParameter;
 
 /**
- *
+ * Modifies a JCpSim PARAMETER based on a predefined set of fixed values.
+ * The set of values acts as an infinite set where the tail of the set is 
+ * linked to the head of it.
+ * The modification rate is dictated by {@link #timeExpression}.
+ * The changes are ALWAYS RELATIVE to the current value of the parameter.
+ * For example, a {@link #values} of [-1, 1] and a {@link #timeExpression} of "1s" 
+ * will decrease by 1 the current value of the JCpSim PARAMETER specified by
+ * {@link #target} in the first second, then it will increase the value by 1
+ * in the second second, and then the loop begins again: -1, +1, -1, +1, -1, etc.
  * @author esteban
  */
 public class PeriodicalRuleTemplate implements SimulationRuleTemplate {

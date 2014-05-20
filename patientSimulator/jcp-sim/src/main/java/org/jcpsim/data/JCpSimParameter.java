@@ -58,6 +58,22 @@ public enum JCpSimParameter {
     O_G_GAS_CALCULATED,
     
     
+    //ARTERIAL_LINE PATIENT
+    AA_P_WAVE,
+    AA_P_FLUSH,
+    AA_P_DAMP,
+    AA_P_RLINE,
+    AA_P_CLINE,
+    AA_P_LLINE,
+    AA_P_MOD,
+
+    //ARTERIAL_LINE OUTPUT
+    AA_O_FLOW,
+    AA_O_PRESP,
+    AA_O_FREQ,
+    AA_O_DAMP_COEFF,
+    AA_O_PREAL,
+    
     //Time
     TIME
 }

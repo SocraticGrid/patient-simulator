@@ -5,13 +5,13 @@
 package com.cognitive.nsf.management.ui;
 
 import com.cognitive.SimulationExecutor;
-import com.cognitive.data.disease.ARDSDiseaseSimulationRules;
-import com.cognitive.data.disease.AsthmaDiseaseSimulationRules;
-import com.cognitive.data.disease.DiseaseSimulationRules;
-import com.cognitive.data.disease.PneumoniaDiseaseSimulationRules;
 import com.cognitive.nsf.management.Manager;
 import com.cognitive.nsf.management.ManagerBuilder;
 import com.cognitive.nsf.management.ManagerEventListener;
+import com.cognitive.nsf.management.disease.ARDSDiseaseSimulationRules;
+import com.cognitive.nsf.management.disease.AsthmaDiseaseSimulationRules;
+import com.cognitive.nsf.management.disease.DiseaseSimulationRules;
+import com.cognitive.nsf.management.disease.PneumoniaDiseaseSimulationRules;
 import com.cognitive.nsf.management.fact.ConstraintViolation;
 import com.cognitive.nsf.management.fact.control.DiseaseActionRequested;
 import com.cognitive.nsf.management.fact.control.NoAlternativeModelFound;
@@ -126,6 +126,9 @@ public class ManagementConsole extends javax.swing.JFrame {
             }
 
             public void onPause() {
+            }
+
+            public void onTermination() {
             }
         };
 

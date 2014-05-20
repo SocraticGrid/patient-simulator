@@ -55,14 +55,16 @@ public class myApplication extends PFrame {
   
 
   public myApplication(PCanvas aCanvas, String title) {
-    super(title, false, aCanvas);
+        super(title, false, aCanvas);
   }
   
 
   public void initialize() {
     String scenario = null;
-    if (args != null) {
-      if (args.length > 0)  scenario = args[1];
+    if (args != null && args.length > 0) {
+        scenario = args[1];
+    } else{
+        scenario = "ArterialLine";
     }
 
     this.setBounds(10,10, Toolkit.getDefaultToolkit().getScreenSize().width, Toolkit.getDefaultToolkit().getScreenSize().height );

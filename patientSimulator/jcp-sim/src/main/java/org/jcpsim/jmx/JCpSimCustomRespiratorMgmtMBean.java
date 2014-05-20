@@ -12,6 +12,6 @@ import org.jcpsim.data.JCpSimDataManager;
  *
  * @author esteban
  */
-public interface JCpSimMgmtMBean extends JCpSimDataManager{
+public interface JCpSimCustomRespiratorMgmtMBean extends JCpSimDataManager{
     
 }

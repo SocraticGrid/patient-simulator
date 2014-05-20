@@ -5,6 +5,7 @@
  */
 package org.jcpsim.jmx;
 
+import java.util.Map;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimDataImpl;
 import org.jcpsim.data.JCpSimParameter;
@@ -15,13 +16,13 @@ import org.jcpsim.scenarios.CustomRespirator;
  *
  * @author esteban
  */
-public class JCpSimMgmt implements JCpSimMgmtMBean {
+public class JCpSimCustomRespiratorMgmt implements JCpSimCustomRespiratorMgmtMBean {
     
     public static final String OBJECT_NAME =  "org.jcpsim:type=CustomRespirator";
     
     private final CustomRespirator respirator;
     
-    public JCpSimMgmt(CustomRespirator respirator) {
+    public JCpSimCustomRespiratorMgmt(CustomRespirator respirator) {
         this.respirator = respirator;
     }
 
@@ -82,6 +83,19 @@ public class JCpSimMgmt implements JCpSimMgmtMBean {
         
         
         return data;
+    }
+    
+    public String getDataAsString() {
+        StringBuilder sb = new StringBuilder();
+        JCpSimData data = this.getData();
+        for (Map.Entry<JCpSimParameter, Double> entry : data.getData().entrySet()) {
+            sb.append(entry.getKey().toString());
+            sb.append(" -> ");
+            sb.append(String.valueOf(entry.getValue()));
+            sb.append("\n");
+        }
+        
+        return sb.toString();
     }
 
     public void set(JCpSimParameter parameter, double value) {

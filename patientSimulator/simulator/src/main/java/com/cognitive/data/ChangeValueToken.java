@@ -8,7 +8,8 @@ import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimParameter;
 
 /**
- *
+ * Class that identifies a change that wants to be made on a JCpSimData object.
+ * Changes can be relative or absolute. For more information see {@link  #applyChange(org.jcpsim.data.JCpSimData)}. 
  * @author esteban
  */
 public class ChangeValueToken  implements InternalToken{
@@ -40,10 +41,21 @@ public class ChangeValueToken  implements InternalToken{
         this(target, change, source, salience, true);
     }
 
+    /**
+     * Applies the Data Modification this object represents to a JCpSimData sample.
+     * If the change starts with the letter 'f' (i.e. "f1" or "f-2") the change
+     * is absolute and the target parameter of the sample data will be set to
+     * it.
+     * If the change doesn't start with the letter 'f', the change is relative
+     * of the current value the target parameter has in the sample data.
+     * For example, a change of "1" means "add 1 to the current value of the target
+     * parameter in the sample data". Negative changes are also supported.
+     * @param originalData 
+     */
     public void applyChange(JCpSimData originalData){
         
         if (this.change.startsWith("f")){
-            originalData.set(target, originalData.get(target) + Double.parseDouble(this.change.substring(1)));
+            originalData.set(target, Double.parseDouble(this.change.substring(1)));
         }else{
             originalData.set(target, originalData.get(target) + Double.parseDouble(this.change));
         }

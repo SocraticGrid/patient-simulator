@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cognitive.data.disease;
+package com.cognitive.nsf.management.disease;
 
 import com.cognitive.template.SimulationRuleTemplate;
 import java.util.List;

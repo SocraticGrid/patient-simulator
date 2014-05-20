@@ -8,7 +8,12 @@ import java.util.UUID;
 import org.jcpsim.data.JCpSimParameter;
 
 /**
- *
+ * Applies a periodical, fixed-value change every {@link #timeExpression} on a
+ * JCpSim PARAMETER.
+ * The changes are ALWAYS RELATIVE to the current value of the parameter.
+ * For example, a {@link #value} of -1 and a {@link #timeExpression} of "1s" 
+ * will decrease by 1 the current value of the JCpSim PARAMETER specified by
+ * {@link #target} every second.
  * @author esteban
  */
 public class PeriodicalFixedRuleTemplate implements SimulationRuleTemplate {

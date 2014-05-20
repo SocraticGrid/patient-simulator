@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cognitive.data.disease;
+package com.cognitive.nsf.management.disease;
 
 import com.cognitive.template.PeriodicalRuleTemplate;
 import com.cognitive.template.SimulationRuleTemplate;
@@ -18,7 +18,7 @@ import org.jcpsim.data.JCpSimParameter;
 public class ARDSDiseaseSimulationRules implements DiseaseSimulationRules{
 
     private String periodicalRulesRate = "1m";
-    private long thresholdRulesThreshold = 6000;
+    private long thresholdRulesThreshold = 60000;
 
     public ARDSDiseaseSimulationRules() {
     }

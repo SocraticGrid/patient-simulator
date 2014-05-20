@@ -2,10 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cognitive.simulator;
+package com.cognitive.nsf.management.disease;
 
-import com.cognitive.data.disease.AsthmaDiseaseSimulationRules;
-import com.cognitive.simulator.executor.ScenarioExecutor;
+import com.cognitive.nsf.management.executor.ScenarioExecutor;
 import com.cognitive.template.SimulationRuleTemplate;
 import java.util.EnumMap;
 import java.util.List;
@@ -18,7 +17,7 @@ import org.junit.Test;
  *
  * @author esteban
  */
-public class AsthmaScenarioExecutorTest {
+public class PneumoniaScenarioExecutorTest {
     
     @Test
     public void doTest() throws Exception{
@@ -34,12 +33,10 @@ public class AsthmaScenarioExecutorTest {
         //Initial parameters
         Map<JCpSimParameter, Double> initialParameterValues = new EnumMap<JCpSimParameter, Double>(JCpSimParameter.class);
         initialParameterValues.put(JCpSimParameter.P_WEIGHT, 75.0);
-        initialParameterValues.put(JCpSimParameter.P_OPENING_PRESSURE, 4.0);
-        initialParameterValues.put(JCpSimParameter.P_SHUNT, 10.0);
-        initialParameterValues.put(JCpSimParameter.P_RESISTANCE, 10.0);
+        initialParameterValues.put(JCpSimParameter.P_OPENING_PRESSURE, 7.0);
+        initialParameterValues.put(JCpSimParameter.P_SHUNT, 3.0);
         
-        
-        List<SimulationRuleTemplate> rules = new AsthmaDiseaseSimulationRules(periodicalRulesRate, thresholdRulesThreshold).getRules();
+        List<SimulationRuleTemplate> rules = new PneumoniaDiseaseSimulationRules(periodicalRulesRate, thresholdRulesThreshold).getRules();
         
         ScenarioExecutor executor = new ScenarioExecutor(simulationId, rules);
         

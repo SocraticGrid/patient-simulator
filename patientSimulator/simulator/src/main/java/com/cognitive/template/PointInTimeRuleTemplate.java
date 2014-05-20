@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.jcpsim.data.JCpSimParameter;
 
 /**
- *
+ * One-shot modification of a JCPSim PARAMETER on a specified time.
  * @author esteban
  */
 public class PointInTimeRuleTemplate implements SimulationRuleTemplate {
@@ -51,9 +51,8 @@ public class PointInTimeRuleTemplate implements SimulationRuleTemplate {
         sb.append("when\n");
         sb.append("        $threshold : Threshold(target == JCpSimParameter.").append(target.name()).append(", source == \"").append(id).append("\")\n");
         sb.append("then\n");
-        sb.append("        modify($threshold){\n");
-        sb.append("            setValue(").append(this.value).append(", kcontext.getKnowledgeRuntime().getSessionClock().getCurrentTime())\n");
-        sb.append("        }\n");
+        sb.append("        double $value = ").append(value).append(";\n");
+        sb.append("        insert(new ChangeValueToken(JCpSimParameter.").append(this.target.name()).append(", String.valueOf($value), drools.getRule().getName()));\n");
         sb.append("end\n\n");
         return sb.toString();
     }

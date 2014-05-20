@@ -10,4 +10,10 @@ package org.jcpsim.data;
  */
 public interface JCpSimDataProvider {
     public JCpSimData getData();
+    
+    /**
+     * Helpful method to use with JConsole.
+     * @return 
+     */
+    public String getDataAsString();
 }

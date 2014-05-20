@@ -1,0 +1,107 @@
+/*
+ * JCpSimMgmt.java
+ *
+ * Created on September 5, 2012, 3:53 PM
+ */
+package org.jcpsim.jmx;
+
+import java.util.Map;
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimDataImpl;
+import org.jcpsim.data.JCpSimParameter;
+import org.jcpsim.scenarios.ArterialLine;
+
+/**
+ * Class JCpSimMgmt
+ *
+ * @author esteban
+ */
+public class JCpSimArterialLineMgmt implements JCpSimArterialLineMgmtMBean {
+    
+    public static final String OBJECT_NAME =  "org.jcpsim:type=ArterialLine";
+    
+    private final ArterialLine arterialLine;
+    
+    public JCpSimArterialLineMgmt(ArterialLine arterialLine) {
+        this.arterialLine = arterialLine;
+    }
+
+    public JCpSimData getData() {
+        JCpSimDataImpl data = new JCpSimDataImpl();
+        
+        //Patient data
+        data.set(JCpSimParameter.AA_P_WAVE, this.arterialLine.getAAPWAVE());
+        data.set(JCpSimParameter.AA_P_FLUSH, this.arterialLine.getAAPFLUSH());
+        data.set(JCpSimParameter.AA_P_DAMP, this.arterialLine.getAAPDAMP());
+        data.set(JCpSimParameter.AA_P_RLINE, this.arterialLine.getAAPRLINE());
+        data.set(JCpSimParameter.AA_P_CLINE, this.arterialLine.getAAPCLINE());
+        data.set(JCpSimParameter.AA_P_LLINE, this.arterialLine.getAAPLLINE());
+        data.set(JCpSimParameter.AA_P_MOD, this.arterialLine.getAAPMOD());
+        
+        //Output data
+        data.set(JCpSimParameter.AA_O_FLOW, this.arterialLine.getAAOFLOW());
+        data.set(JCpSimParameter.AA_O_PRESP, this.arterialLine.getAAOPRESP());
+        data.set(JCpSimParameter.AA_O_FREQ, this.arterialLine.getAAOFREQ());
+        data.set(JCpSimParameter.AA_O_DAMP_COEFF, this.arterialLine.getAAODAMPCOEFF());
+        data.set(JCpSimParameter.AA_O_PREAL, this.arterialLine.getAAOPREAL());
+        
+        //time
+        data.setTime(this.arterialLine.getTime());
+        
+        
+        return data;
+    }
+    
+    public String getDataAsString() {
+        StringBuilder sb = new StringBuilder();
+        JCpSimData data = this.getData();
+        for (Map.Entry<JCpSimParameter, Double> entry : data.getData().entrySet()) {
+            sb.append(entry.getKey().toString());
+            sb.append(" -> ");
+            sb.append(String.valueOf(entry.getValue()));
+            sb.append("\n");
+        }
+        
+        return sb.toString();
+    }
+
+    public void set(JCpSimParameter parameter, double value) {
+        switch(parameter){
+            //Patient
+            case AA_P_WAVE:
+                this.arterialLine.setAAPWAVE(value);
+                break;
+            case AA_P_FLUSH:
+                this.arterialLine.setAAPFLUSH(value);
+                break;
+            case AA_P_DAMP:
+                this.arterialLine.setAAPDAMP(value);
+                break;
+            case AA_P_RLINE:
+                this.arterialLine.setAAPRLINE(value);
+                break;
+            case AA_P_CLINE:
+                this.arterialLine.setAAPCLINE(value);
+                break;
+            case AA_P_LLINE:
+                this.arterialLine.setAAPLLINE(value);
+                break;
+            case AA_P_MOD:
+                this.arterialLine.setAAPMOD(value);
+                break;
+            default:
+                throw new IllegalArgumentException(parameter+" is READ-ONLY!");
+        }
+        
+    }
+
+    public void requestPause() {
+        this.arterialLine.requestPause();
+    }
+
+    public void resume() {
+        this.arterialLine.resume();
+    }
+
+    
+}
