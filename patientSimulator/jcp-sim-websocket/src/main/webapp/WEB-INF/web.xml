@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+    <display-name>jcp-sim-websocket</display-name>
+
+
+    <context-param>
+        <param-name>jmx.url</param-name>
+        <param-value>service:jmx:rmi:///jndi/rmi://localhost:9999/JCpSim</param-value>
+    </context-param>
+    <context-param>
+        <param-name>jmx.object</param-name>
+        <param-value>org.jcpsim:type=ArterialLine_SIM</param-value>
+    </context-param>
+    <context-param>
+        <param-name>jmx.poll.time</param-name>
+        <param-value>1000</param-value> <!-- In ms -->
+    </context-param>
+    <context-param>
+        <param-name>jcpsim.selected-fields</param-name>
+        <param-value>AA_O_PRESP,TIME</param-value> <!-- From JCpSimParameter enum -->
+    </context-param>
+    <context-param>
+        <param-name>jcpsim.format</param-name>
+        <param-value>JSONLD</param-value> <!-- From JCpSimParameter enum -->
+    </context-param>
+
+    <listener>
+        <description>ServletContextListener</description>
+        <listener-class>com.cognitive.nsf.patientsimulator.websocket.JCpSimContextListener</listener-class>
+    </listener>
+    <session-config>
+        <session-timeout>
+            30
+        </session-timeout>
+    </session-config>
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+</web-app>

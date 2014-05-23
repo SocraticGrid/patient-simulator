@@ -73,10 +73,25 @@ import org.jcpsim.scenarios.CustomRespirator;
  * website, upload software.
  */
 public final class Global {
+    
+    private final static String host;
+    private final static String simPort;
+    private final static String auxPort;
+    
+    static {
+        host = System.getProperty("jcpsim.jmx.host" ,"localhost");
+        simPort = System.getProperty("jcpsim.jmx.portsim" ,"9999");
+        auxPort = System.getProperty("jcpsim.jmx.portaux" ,"9998");
+        
+        System.out.println("Global configurations:");
+        System.out.println("\tJMX Host: "+host);
+        System.out.println("\tJMX Sim Port: "+simPort);
+        System.out.println("\tJMX Aux Port: "+auxPort);
+    }
 
     public  enum MODE{
         SIM(
-                "service:jmx:rmi:///jndi/rmi://localhost:9999/JCpSim",
+                "service:jmx:rmi:///jndi/rmi://"+host+":"+simPort+"/JCpSim",
                 9999,
                 new Color(220, 220, 220), 
                 new Color(108, 147, 224), 
@@ -86,7 +101,7 @@ public final class Global {
                 1000
         ),
         AUX(
-                "service:jmx:rmi:///jndi/rmi://localhost:9998/JCpSim",
+                "service:jmx:rmi:///jndi/rmi://"+host+":"+auxPort+"/JCpSim",
                 9998,
                 new Color(220, 200, 200), 
                 new Color(108, 147, 224), 
