@@ -16,6 +16,10 @@
         <param-value>1000</param-value> <!-- In ms -->
     </context-param>
     <context-param>
+        <param-name>recommendation.poll.time</param-name>
+        <param-value>100</param-value> <!-- In ms -->
+    </context-param>
+    <context-param>
         <param-name>jcpsim.selected-fields</param-name>
         <param-value>AA_O_PRESP,TIME</param-value> <!-- From JCpSimParameter enum -->
     </context-param>
@@ -27,6 +31,10 @@
     <listener>
         <description>ServletContextListener</description>
         <listener-class>com.cognitive.nsf.patientsimulator.websocket.JCpSimContextListener</listener-class>
+    </listener>
+    <listener>
+        <description>ServletContextListener</description>
+        <listener-class>com.cognitive.nsf.patientsimulator.recommendation.RecommendationContextListener</listener-class>
     </listener>
     <session-config>
         <session-timeout>

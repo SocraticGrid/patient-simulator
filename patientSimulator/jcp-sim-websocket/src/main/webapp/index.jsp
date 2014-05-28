@@ -22,10 +22,8 @@
         <div class="container">
             <h1 id="title">JCpSim Web Console</h1>
             <div class="panel panel-default">
-                <div class="panel-heading"><h3>Data Gatherer</h3></div>
+                <div class="panel-heading"><h3>Physiologic Monitor</h3></div>
                 <div class="panel-body">
-
-
                     <form class="form-horizontal" role="form">
                         <div class="form-group">
                             <label for="dataGathererStatus" class="col-sm-2 control-label">Status</label>
@@ -72,7 +70,28 @@
             </div>
             <div class="panel panel-default">
                 <div class="panel-heading">
-                    <h3>Live Data</h3>
+                    <h3>CDS System</h3>
+                </div>
+                <div class="panel-body">
+                    <form class="form-horizontal" role="form">
+                        <div class="form-group">
+                            <label for="cdsStatus" class="col-sm-2 control-label">Alerts</label>
+                            <div class="col-sm-10">
+                                <input type="checkbox" name="cdsStatus" id="cdsStatus" checked>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cdsGenomicStatus" class="col-sm-2 control-label">Genomic Data</label>
+                            <div class="col-sm-10">
+                                <input type="checkbox" name="cdsGenomicStatus" id="cdsGenomicStatus" checked>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3>Patient Data</h3>
                 </div>
                 <div class="panel-body">
                     <canvas id="dataChart" width="1000" height="300"></canvas>
@@ -156,6 +175,24 @@
 
                 $('#dataGathererFormat').multiselect({
                 });
+                
+                $("[name='cdsStatus']").bootstrapSwitch({
+                    onColor: 'success',
+                    offColor: 'danger'
+                });
+                
+                $("#cdsStatus").on('switchChange.bootstrapSwitch', function(event, state) {
+                    changeCDSStatus("ALERTS", state?"ON":"OFF");
+                });
+                
+                $("[name='cdsGenomicStatus']").bootstrapSwitch({
+                    onColor: 'success',
+                    offColor: 'danger'
+                });
+                
+                $("#cdsGenomicStatus").on('switchChange.bootstrapSwitch', function(event, state) {
+                    changeCDSStatus("GENOME", state?"ON":"OFF");
+                });
 
                 $('#chartFields').multiselect({
                     onChange: function(element, checked) {
@@ -183,12 +220,17 @@
 
                         getStatusFromServer();
                         setInterval(getStatusFromServer, 10000);
+                        
+                        getCDSStatusFromServer();
+                        setInterval(getCDSStatusFromServer, 10000);
 
                     } finally {
                         hideWaitDialog();
                     }
 
                 });
+                
+                
 
                 openWS();
 
@@ -210,6 +252,20 @@
                 }).done(function(data) {
                     updateUI(data);
                 });
+            }
+            
+            function getCDSStatusFromServer() {
+                $.ajax({
+                    type: "GET",
+                    url: "RecommendationConsoleServlet?action=getStatus"
+                }).done(function(data) {
+                    updateCDSUI(data);
+                });
+            }
+            
+            function updateCDSUI(data) {
+                $("[name='cdsStatus']").bootstrapSwitch('state', data.alertService.enabled, true);
+                $("[name='cdsGenomicStatus']").bootstrapSwitch('state', data.genomicService.enabled, true);
             }
 
             function updateUI(data) {
@@ -250,7 +306,26 @@
 
                 });
             }
+            
+            function changeCDSStatus(service, value /*'ON' or 'OFF' */) {
+                showWaitDialog("Changing CDS "+service+" Status to '" + value + "'");
+                $.ajax({
+                    type: "GET",
+                    url: "RecommendationConsoleServlet?action=toggle&service="+service+"&value="+value
+                }).done(function(data) {
+                    try {
+                        if (data.status && data.status === "error") {
+                            alert("ERROR: " + data.message);
+                            return;
+                        }
+                        updateCDSUI(data);
+                    } finally {
+                        hideWaitDialog();
+                    }
 
+                });
+            }
+            
             function openWS() {
                 if ('WebSocket' in window) {
 
