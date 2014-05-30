@@ -11,6 +11,7 @@
         <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
         <link href="css/bootstrap-switch.min.css" rel="stylesheet" media="screen">
         <link href="css/bootstrap-multiselect.css" rel="stylesheet" media="screen">
+        <link href="css/jbar.css" rel="stylesheet" media="screen">
 
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
@@ -75,6 +76,12 @@
                 <div class="panel-body">
                     <form class="form-horizontal" role="form">
                         <div class="form-group">
+                            <label for="cdsDataGathererStatus" class="col-sm-2 control-label">Status</label>
+                            <div class="col-sm-10">
+                                <input type="checkbox" name="cdsDataGathererStatus" id="cdsDataGathererStatus" checked>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label for="cdsStatus" class="col-sm-2 control-label">Alerts</label>
                             <div class="col-sm-10">
                                 <input type="checkbox" name="cdsStatus" id="cdsStatus" checked>
@@ -92,13 +99,15 @@
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3>Patient Data</h3>
+                    <span style="margin-right: 20px;">Abnormalities <span class="badge" id="cdsAbnormalities">0</span></span>
+                    <span>Alerts <span class="badge" id="cdsAlerts">0</span></span>
                 </div>
                 <div class="panel-body">
                     <canvas id="dataChart" width="1000" height="300"></canvas>
                 </div>
                 <div class="panel-footer">
                     <select id="chartFields" class="select2" style="width:400px;">
-                        
+
                     </select>
                 </div>
             </div>
@@ -127,6 +136,7 @@
         <script src="js/bootstrap-switch.min.js"></script>
         <script src="js/bootstrap-multiselect.js"></script>
         <script type="text/javascript" charset="utf-8" src="js/Chart.min.js"></script>
+        <script src="js/jquery.bar.js" type="text/javascript"></script>
 
         <script>//<![CDATA[
 
@@ -136,7 +146,9 @@
                 datasetFill: false
             };
 
-
+            var cdsTotalAlerts = 0;
+            var cdsTotalAbnormalities = 0;
+            var cdsAbnormalities = [];
 
             (function() {
 
@@ -149,6 +161,15 @@
 
                 $("#dataGathererStatus").on('switchChange.bootstrapSwitch', function(event, state) {
                     changeDataGathererStatus('running', state);
+                });
+
+                $("[name='cdsDataGathererStatus']").bootstrapSwitch({
+                    onColor: 'success',
+                    offColor: 'danger'
+                });
+
+                $("#cdsDataGathererStatus").on('switchChange.bootstrapSwitch', function(event, state) {
+                    changeCDSDataGathererStatus(state);
                 });
 
                 $("#dataGathererSampleRateButton").click(function() {
@@ -175,23 +196,23 @@
 
                 $('#dataGathererFormat').multiselect({
                 });
-                
+
                 $("[name='cdsStatus']").bootstrapSwitch({
                     onColor: 'success',
                     offColor: 'danger'
                 });
-                
+
                 $("#cdsStatus").on('switchChange.bootstrapSwitch', function(event, state) {
-                    changeCDSStatus("ALERTS", state?"ON":"OFF");
+                    changeCDSStatus("ALERTS", state ? "ON" : "OFF");
                 });
-                
+
                 $("[name='cdsGenomicStatus']").bootstrapSwitch({
                     onColor: 'success',
                     offColor: 'danger'
                 });
-                
+
                 $("#cdsGenomicStatus").on('switchChange.bootstrapSwitch', function(event, state) {
-                    changeCDSStatus("GENOME", state?"ON":"OFF");
+                    changeCDSStatus("GENOME", state ? "ON" : "OFF");
                 });
 
                 $('#chartFields').multiselect({
@@ -220,7 +241,7 @@
 
                         getStatusFromServer();
                         setInterval(getStatusFromServer, 10000);
-                        
+
                         getCDSStatusFromServer();
                         setInterval(getCDSStatusFromServer, 10000);
 
@@ -229,8 +250,8 @@
                     }
 
                 });
-                
-                
+
+
 
                 openWS();
 
@@ -253,7 +274,7 @@
                     updateUI(data);
                 });
             }
-            
+
             function getCDSStatusFromServer() {
                 $.ajax({
                     type: "GET",
@@ -262,8 +283,9 @@
                     updateCDSUI(data);
                 });
             }
-            
+
             function updateCDSUI(data) {
+                $("[name='cdsDataGathererStatus']").bootstrapSwitch('state', data.dataGatherer.running, true);
                 $("[name='cdsStatus']").bootstrapSwitch('state', data.alertService.enabled, true);
                 $("[name='cdsGenomicStatus']").bootstrapSwitch('state', data.genomicService.enabled, true);
             }
@@ -277,14 +299,14 @@
                 $('#chartFields').empty();
                 $.each(data.jcpsim.selectedFields, function() {
                     $('#dataGathererFields').multiselect('select', this);
-                    if (this != "TIME"){
+                    if (this != "TIME") {
                         $('#chartFields').append("<option value='" + this + "'>" + this + "</option>");
                     }
                 });
 
                 $('#chartFields').multiselect('rebuild');
                 $('#chartFields').multiselect('select', chartFieldCurrentValue);
-                
+
 
             }
 
@@ -306,12 +328,12 @@
 
                 });
             }
-            
-            function changeCDSStatus(service, value /*'ON' or 'OFF' */) {
-                showWaitDialog("Changing CDS "+service+" Status to '" + value + "'");
+
+            function changeCDSDataGathererStatus(value) {
+                showWaitDialog("Changing CDS Data Gatherer status to '" + value + "'");
                 $.ajax({
                     type: "GET",
-                    url: "RecommendationConsoleServlet?action=toggle&service="+service+"&value="+value
+                    url: "RecommendationConsoleServlet?action=toggleDataGatherer&value=" + value
                 }).done(function(data) {
                     try {
                         if (data.status && data.status === "error") {
@@ -325,7 +347,26 @@
 
                 });
             }
-            
+
+            function changeCDSStatus(service, value /*'ON' or 'OFF' */) {
+                showWaitDialog("Changing CDS " + service + " Status to '" + value + "'");
+                $.ajax({
+                    type: "GET",
+                    url: "RecommendationConsoleServlet?action=toggle&service=" + service + "&value=" + value
+                }).done(function(data) {
+                    try {
+                        if (data.status && data.status === "error") {
+                            alert("ERROR: " + data.message);
+                            return;
+                        }
+                        updateCDSUI(data);
+                    } finally {
+                        hideWaitDialog();
+                    }
+
+                });
+            }
+
             function openWS() {
                 if ('WebSocket' in window) {
 
@@ -335,6 +376,39 @@
                         try {
                             var data = $.parseJSON(message.data);
                             updateChart(data);
+                        } catch (e) {
+                            alert("Error parsing notificatoin: " + e);
+                        }
+                    };
+
+
+                    this.cdsSocket = new WebSocket("ws://" + location.host + "/jcp-sim-websocket/cdsEndpoint");
+                    this.cdsSocket.onmessage = function(message) {
+
+                        try {
+                            var data = $.parseJSON(message.data);
+
+                            if (data.type === "AbnormalBucket") {
+                                cdsTotalAbnormalities++;
+                                cdsAbnormalities.push(data);
+
+                                if (cdsAbnormalities.length > 10) {
+                                    cdsAbnormalities.shift();
+                                }
+
+                                $('#cdsAbnormalities').html(cdsTotalAbnormalities);
+                            } else if (data.type === "AlertRequest") {
+                                cdsTotalAlerts++;
+                                $('#cdsAlerts').html(cdsTotalAlerts);
+
+
+                                $.bar({
+                                    message: data.message,
+                                    time: 5000
+                                });
+
+
+                            }
                         } catch (e) {
                             alert("Error parsing notificatoin: " + e);
                         }

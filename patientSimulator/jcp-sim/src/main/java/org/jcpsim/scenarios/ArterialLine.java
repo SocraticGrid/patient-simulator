@@ -37,14 +37,25 @@ import org.jcpsim.gui.InputElement;
 import edu.umd.cs.piccolo.nodes.PText;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jcpsim.clock.Clock;
 import org.jcpsim.clock.ClockEvent;
 import org.jcpsim.clock.ClockEventListener;
+import org.jcpsim.data.JCpSimData;
+import org.jcpsim.data.JCpSimDataImpl;
+import org.jcpsim.data.JCpSimParameter;
 import org.jcpsim.run.Global;
 
 public class ArterialLine extends Scenario implements ClockEventListener {
+
+    public static interface ArterialLineEventListener {
+
+        public void onDataCalculated(JCpSimData data);
+    }
 
     // given values
     Input WavesToShow;      // wavwforms to be shown
@@ -54,7 +65,7 @@ public class ArterialLine extends Scenario implements ClockEventListener {
     Input Rline;     // resistance
     Input Cline;     // compliance 
     Input Lline;     // inductance
-    
+
     Input pPatientMod;
 
     Output Freq;      // natural frequency Fn
@@ -64,14 +75,14 @@ public class ArterialLine extends Scenario implements ClockEventListener {
     DEsOutput time;      // 
     DeOutput qLine;     // 
     DeOutput pMeas;     //
-    
+
     //traces
     Trace trace1;
     Trace trace2;
     Color trace1DefaultColor = new Color(0, 0, 255, 128);
     Color trace1HiddenColor = Color.GREEN;
-    Color trace2DefaultColor =  new Color(255, 0, 0, 128);
-    Color trace2HiddenColor =  Color.ORANGE;
+    Color trace2DefaultColor = new Color(255, 0, 0, 128);
+    Color trace2HiddenColor = Color.ORANGE;
 
     final double RflushTrue = 0.2;
     final double RflushFalse = 200 * 3600 / 2;
@@ -98,13 +109,15 @@ public class ArterialLine extends Scenario implements ClockEventListener {
     private final Global global;
 
     ArterialLineDataFileLogger fileLogger;
-    
+
     private final Clock clock;
     private boolean paused;
     private boolean currentSimulationTimePaused = true;
     private boolean pauseRequested;
-    
-  // ---------------------------------------------------------------------
+
+    private List<ArterialLineEventListener> eventListeners = Collections.synchronizedList(new ArrayList<ArterialLineEventListener>());
+
+    // ---------------------------------------------------------------------
     private class broadBezier extends Bezier {
 
         public broadBezier() {
@@ -157,48 +170,57 @@ public class ArterialLine extends Scenario implements ClockEventListener {
     }
 
     public double pPatient(double t) {
-    switch ((int)Wave.get()) {
-      case 0:  return broadWave.get(t) + pPatientMod.get();
-      case 1:  return narrowWave.get(t)  + pPatientMod.get();
-      default: return 100;
+        switch ((int) Wave.get()) {
+            case 0:
+                return broadWave.get(t) + pPatientMod.get();
+            case 1:
+                return narrowWave.get(t) + pPatientMod.get();
+            default:
+                return 100;
         }
     }
-        
-        
+
     public void compute(int i) {
         _pPatient.set(pPatient(0));
     }
 
     int oldWavesToShowValue = -1;
+
     public void step(int n) {
         time.stepDelta(1 / (double) fSampling);
         _pPatient.set(pPatient(time.get()));
         plot.update();
         block.macroTimeStep(time.get());
-        
-        if (oldWavesToShowValue != (int)WavesToShow.get()){
-            oldWavesToShowValue = (int)WavesToShow.get();
-            switch ((int)WavesToShow.get()) {
+
+        if (oldWavesToShowValue != (int) WavesToShow.get()) {
+            oldWavesToShowValue = (int) WavesToShow.get();
+            switch ((int) WavesToShow.get()) {
                 case 0:
-                    trace1.color =  trace1DefaultColor;
-                    trace2.color =  trace2DefaultColor;
+                    trace1.color = trace1DefaultColor;
+                    trace2.color = trace2DefaultColor;
                     break;
                 case 1:
-                    trace1.color =  trace1DefaultColor;
-                    trace2.color =  plot.getClipColor();
+                    trace1.color = trace1DefaultColor;
+                    trace2.color = plot.getClipColor();
                     break;
                 default:
-                    trace1.color =  plot.getClipColor();
-                    trace2.color =  trace2DefaultColor;
+                    trace1.color = plot.getClipColor();
+                    trace2.color = trace2DefaultColor;
                     break;
             }
         }
-        
+
     }
 
-  // -----------------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------------
     public ArterialLine(Global global, Clock clock) {
         super("Arterial Line");
+
+        try {
+            this.fileLogger = new ArterialLineDataFileLogger(File.createTempFile("ArterialLine", ".csv"));
+        } catch (IOException ex) {
+            Logger.getLogger(ArterialLine.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
         this.global = global;
         this.clock = clock;
@@ -249,13 +271,39 @@ public class ArterialLine extends Scenario implements ClockEventListener {
 
         Freq = block.addO(new Output(block, "Frequency", f_Hz, 0.0, 50.0, 0.1) {
             public double get() {
-                if (fileLogger != null){
+                if (fileLogger != null) {
                     try {
                         fileLogger.write(pMeas.get(), _pPatient.get(), pPatientMod.get());
                     } catch (IOException ex) {
                         Logger.getLogger(ArterialLine.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
+
+                JCpSimDataImpl data = new JCpSimDataImpl();
+
+                //Patient data
+                data.set(JCpSimParameter.AA_P_WAVE, getAAPWAVE());
+                data.set(JCpSimParameter.AA_P_FLUSH, getAAPFLUSH());
+                data.set(JCpSimParameter.AA_P_DAMP, getAAPDAMP());
+                data.set(JCpSimParameter.AA_P_RLINE, getAAPRLINE());
+                data.set(JCpSimParameter.AA_P_CLINE, getAAPCLINE());
+                data.set(JCpSimParameter.AA_P_LLINE, getAAPLLINE());
+                data.set(JCpSimParameter.AA_P_MOD, getAAPMOD());
+
+                //Output data
+                data.set(JCpSimParameter.AA_O_FLOW, getAAOFLOW());
+                data.set(JCpSimParameter.AA_O_PRESP, getAAOPRESP());
+                //data.set(JCpSimParameter.AA_O_FREQ, getAAOFREQ());
+                data.set(JCpSimParameter.AA_O_DAMP_COEFF, getAAODAMPCOEFF());
+                data.set(JCpSimParameter.AA_O_PREAL, getAAOPREAL());
+
+                //time
+                data.setTime(System.currentTimeMillis());
+
+                for (ArterialLineEventListener arterialLineEventListener : eventListeners) {
+                    arterialLineEventListener.onDataCalculated(data);
+                }
+
                 return 1.0 / (2.0 * Math.PI * Math.sqrt(Lline.get() * Cline.get()));
             }
         });
@@ -274,10 +322,14 @@ public class ArterialLine extends Scenario implements ClockEventListener {
         trace2 = new Trace("at Transducer", time, pMeas, traces, 2, 5.0f, trace2DefaultColor, null, Trace.LINES, null);
 
         plot = new PlotNode("Arterial Line Plot", true, new Trace[]{trace1, trace2});
-        
+
         plot.setBounds(0, 0, 700, 500);
         addChild(plot);
         setBounds(getUnionOfChildrenBounds(null));
+    }
+
+    public void addEventListener(ArterialLineEventListener listener) {
+        this.eventListeners.add(listener);
     }
 
     public void requestPause() {
@@ -289,28 +341,28 @@ public class ArterialLine extends Scenario implements ClockEventListener {
         this.pauseRequested = false;
         clock.resume();
     }
-    
+
     public Clock getClock() {
         return clock;
     }
-    
-    public void resetCurrentSimulationTime(){
+
+    public void resetCurrentSimulationTime() {
         try {
             this.time.setT(0.0);
             this.currentSimulationTimePaused = false;
-            
+
             this.fileLogger = new ArterialLineDataFileLogger(File.createTempFile("ArterialLine", ".csv"));
         } catch (IOException ex) {
             Logger.getLogger(ArterialLine.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
     }
-    
-    public void stopCurrentSimulationTime(){
+
+    public void stopCurrentSimulationTime() {
         this.currentSimulationTimePaused = true;
         fileLogger = null;
     }
-    
+
     private void repaintBlocks() {
         for (Block block : this.getBlocks()) {
             block.invalidatePaint();
@@ -340,7 +392,7 @@ public class ArterialLine extends Scenario implements ClockEventListener {
     public Double getAAPLLINE() {
         return this.Lline.get();
     }
-    
+
     public Double getAAPMOD() {
         return this.pPatientMod.get();
     }
@@ -398,14 +450,14 @@ public class ArterialLine extends Scenario implements ClockEventListener {
         this.Lline.setDouble(value);
         this.repaintBlocks();
     }
-    
+
     public void setAAPMOD(double value) {
         this.pPatientMod.setDouble(value);
         this.repaintBlocks();
     }
-    
+
     public void onEvent(ClockEvent event) {
-        switch (event.getType()){
+        switch (event.getType()) {
             case CLOCK_PAUSED:
                 paused = true;
                 break;

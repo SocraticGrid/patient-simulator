@@ -43,7 +43,6 @@ public class JCpSimPollingClient implements JCpSimDataManager {
         JMXServiceURL serviceUrl = new JMXServiceURL(url);
         jmxc = JMXConnectorFactory.connect(serviceUrl, null);
         MBeanServerConnection connection = jmxc.getMBeanServerConnection();
-
         this.mbean = JMX.newMBeanProxy(connection, new ObjectName(objectName), 
                                           JCpSimCustomRespiratorMgmtMBean.class, true);
     }

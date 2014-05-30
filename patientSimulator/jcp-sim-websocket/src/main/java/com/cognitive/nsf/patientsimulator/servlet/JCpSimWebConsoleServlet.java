@@ -5,6 +5,7 @@
  */
 package com.cognitive.nsf.patientsimulator.servlet;
 
+import com.cognitive.nsf.patientsimulator.recommendation.RecommendationContextListener;
 import com.cognitive.nsf.patientsimulator.websocket.JCpSimContextListener;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -34,7 +35,7 @@ import org.jcpsim.data.JCpSimParameter;
 public class JCpSimWebConsoleServlet extends HttpServlet {
 
     public static List<JCpSimParameter> selectedFields = Collections.synchronizedList(new ArrayList<JCpSimParameter>());
-    public static String format;
+    public static String format = "JSON" ;
     private JsonArray availableFields;
 
     @Override

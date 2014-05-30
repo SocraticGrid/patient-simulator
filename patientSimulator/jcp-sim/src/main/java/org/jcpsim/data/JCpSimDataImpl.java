@@ -17,6 +17,7 @@ public class JCpSimDataImpl implements JCpSimData {
     protected Map<JCpSimParameter, Double> parameters = new EnumMap<JCpSimParameter, Double>(JCpSimParameter.class);
     
     public void setTime(long value){
+        parameters.put(JCpSimParameter.TIME, (double)value);
         this.time = value;
     } 
     

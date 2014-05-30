@@ -91,7 +91,7 @@ public class JCpSimDataGatherer {
 
     public JCpSimDataGatherer(JCpSimDataProviderFactory dataProviderFactory, long sampleRate) {
         this.dataGathererThreadExecutor = Executors.newScheduledThreadPool(1);
-        this.eventListenersNotificationExecutor = Executors.newFixedThreadPool(5);
+        this.eventListenersNotificationExecutor = Executors.newFixedThreadPool(1);
         this.dataProviderFactory = dataProviderFactory;
         this.sampleRate = sampleRate;
     }

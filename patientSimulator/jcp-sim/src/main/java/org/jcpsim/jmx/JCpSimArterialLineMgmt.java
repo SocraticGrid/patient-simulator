@@ -6,6 +6,8 @@
 package org.jcpsim.jmx;
 
 import java.util.Map;
+import javax.management.Notification;
+import javax.management.NotificationBroadcasterSupport;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimDataImpl;
 import org.jcpsim.data.JCpSimParameter;
@@ -16,7 +18,7 @@ import org.jcpsim.scenarios.ArterialLine;
  *
  * @author esteban
  */
-public class JCpSimArterialLineMgmt implements JCpSimArterialLineMgmtMBean {
+public class JCpSimArterialLineMgmt extends NotificationBroadcasterSupport implements JCpSimArterialLineMgmtMBean {
     
     public static final String OBJECT_NAME =  "org.jcpsim:type=ArterialLine";
     
@@ -24,6 +26,15 @@ public class JCpSimArterialLineMgmt implements JCpSimArterialLineMgmtMBean {
     
     public JCpSimArterialLineMgmt(ArterialLine arterialLine) {
         this.arterialLine = arterialLine;
+        
+        this.arterialLine.addEventListener(new ArterialLine.ArterialLineEventListener() {
+
+            public void onDataCalculated(JCpSimData data) {
+                JCpSimDataNotification notification = new JCpSimDataNotification("JCpSimData", "JCpSimArterialLineMgmt", data.getTime());
+                notification.setData(data);
+                sendNotification(notification);
+            }
+        });
     }
 
     public JCpSimData getData() {
@@ -64,7 +75,7 @@ public class JCpSimArterialLineMgmt implements JCpSimArterialLineMgmtMBean {
         
         return sb.toString();
     }
-
+    
     public void set(JCpSimParameter parameter, double value) {
         switch(parameter){
             //Patient

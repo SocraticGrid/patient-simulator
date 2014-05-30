@@ -43,14 +43,21 @@ public class RecommendationConsoleServlet extends HttpServlet {
             Gson gson = new Gson();
             JsonElement result = null;
             switch (action) {
-                case "toggle":
+                case "toggleDataGatherer": {
+                    Boolean value = Boolean.parseBoolean(request.getParameter("value"));
+                    result = this.toggleDataGatherer(value);
+                    break;
+                }
+                case "toggle": {
                     String service = request.getParameter("service");
                     String value = request.getParameter("value");
                     result = this.toggle(service, value);
                     break;
-                case "getStatus":
+                }
+                case "getStatus": {
                     result = this.getStatus();
                     break;
+                }
             }
 
             response.setContentType("text/json;charset=UTF-8");
@@ -60,6 +67,18 @@ public class RecommendationConsoleServlet extends HttpServlet {
                 out.write("{}");
             }
         }
+    }
+
+    private JsonElement toggleDataGatherer(boolean value) {
+        if (value) {
+            if (!RecommendationContextListener.jCpSimNotificationClient.isRunning()) {
+                RecommendationContextListener.jCpSimNotificationClient.start();
+            }
+        } else {
+            RecommendationContextListener.jCpSimNotificationClient.stop();
+        }
+        
+        return this.getStatus();
     }
 
     private JsonElement toggle(String service, String value) {
@@ -74,14 +93,17 @@ public class RecommendationConsoleServlet extends HttpServlet {
     }
 
     private JsonElement getStatus() {
+        JsonObject dataGatherer = new JsonObject();
+        dataGatherer.addProperty("running", RecommendationContextListener.jCpSimNotificationClient.isRunning());
+        
         JsonObject alertService = new JsonObject();
         alertService.addProperty("enabled", RecommendationContextListener.recommendationSystem.areAlertsActive());
-        
+
         JsonObject genomicService = new JsonObject();
         genomicService.addProperty("enabled", RecommendationContextListener.recommendationSystem.isGenomeServiceActive());
 
-        
         JsonObject config = new JsonObject();
+        config.add("dataGatherer", dataGatherer);
         config.add("alertService", alertService);
         config.add("genomicService", genomicService);
 
