@@ -10,27 +10,27 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.drools.common.DefaultFactHandle;
-import org.drools.event.rule.ActivationCancelledEvent;
-import org.drools.event.rule.ActivationCreatedEvent;
-import org.drools.event.rule.AfterActivationFiredEvent;
-import org.drools.event.rule.AgendaEventListener;
-import org.drools.event.rule.AgendaGroupPoppedEvent;
-import org.drools.event.rule.AgendaGroupPushedEvent;
-import org.drools.event.rule.BeforeActivationFiredEvent;
-import org.drools.event.rule.ObjectInsertedEvent;
-import org.drools.event.rule.ObjectRetractedEvent;
-import org.drools.event.rule.ObjectUpdatedEvent;
-import org.drools.event.rule.RuleFlowGroupActivatedEvent;
-import org.drools.event.rule.RuleFlowGroupDeactivatedEvent;
-import org.drools.event.rule.WorkingMemoryEventListener;
-import org.drools.runtime.rule.FactHandle;
+import org.drools.core.common.DefaultFactHandle;
+import org.kie.api.event.rule.AfterMatchFiredEvent;
+import org.kie.api.event.rule.AgendaEventListener;
+import org.kie.api.event.rule.AgendaGroupPoppedEvent;
+import org.kie.api.event.rule.AgendaGroupPushedEvent;
+import org.kie.api.event.rule.BeforeMatchFiredEvent;
+import org.kie.api.event.rule.MatchCancelledEvent;
+import org.kie.api.event.rule.MatchCreatedEvent;
+import org.kie.api.event.rule.ObjectDeletedEvent;
+import org.kie.api.event.rule.ObjectInsertedEvent;
+import org.kie.api.event.rule.ObjectUpdatedEvent;
+import org.kie.api.event.rule.RuleFlowGroupActivatedEvent;
+import org.kie.api.event.rule.RuleFlowGroupDeactivatedEvent;
+import org.kie.api.event.rule.RuleRuntimeEventListener;
+import org.kie.api.runtime.rule.FactHandle;
 
 /**
  *
  * @author esteban
  */
-public class ManagementConsoleEventListener implements AgendaEventListener, WorkingMemoryEventListener{
+public class ManagementConsoleEventListener implements AgendaEventListener, RuleRuntimeEventListener{
 
     private final ManagementConsole managementConsole;
 
@@ -73,58 +73,68 @@ public class ManagementConsoleEventListener implements AgendaEventListener, Work
         
     }
     
-    
-    public void activationCreated(ActivationCreatedEvent event) {
-        System.out.print("Activation Created: " + event.getActivation().getRule().getName() + ": [");
-        for (FactHandle factHandle : event.getActivation().getFactHandles()) {
+    @Override
+    public void matchCreated(MatchCreatedEvent event) {
+        System.out.print("Activation Created: " + event.getMatch().getRule().getName() + ": [");
+        for (FactHandle factHandle : event.getMatch().getFactHandles()) {
             System.out.print(((DefaultFactHandle) factHandle).getId() + ",");
         }
         System.out.println("]");
 
     }
 
-    public void activationCancelled(ActivationCancelledEvent event) {
-        System.out.print("Activation Cancelled: " + event.getActivation().getRule().getName()+ ":[");
-        for (FactHandle factHandle : event.getActivation().getFactHandles()) {
+    @Override
+    public void matchCancelled(MatchCancelledEvent event) {
+        System.out.print("Activation Cancelled: " + event.getMatch().getRule().getName()+ ":[");
+        for (FactHandle factHandle : event.getMatch().getFactHandles()) {
             System.out.print(((DefaultFactHandle) factHandle).getId() + ",");
         }
         System.out.println("]");
     }
 
-    public void beforeActivationFired(BeforeActivationFiredEvent event) {
-        System.out.print("Before Activation Fired: " + event.getActivation().getRule().getName()+ ":[");
-        for (FactHandle factHandle : event.getActivation().getFactHandles()) {
+    @Override
+    public void beforeMatchFired(BeforeMatchFiredEvent event) {
+        System.out.print("Before Activation Fired: " + event.getMatch().getRule().getName()+ ":[");
+        for (FactHandle factHandle : event.getMatch().getFactHandles()) {
             System.out.print(((DefaultFactHandle) factHandle).getId() + ",");
         }
         System.out.println("]");
     }
 
-    public void afterActivationFired(AfterActivationFiredEvent event) {
-        System.out.print("After Activation Fired: " + event.getActivation().getRule().getName()+ ":[");
-        for (FactHandle factHandle : event.getActivation().getFactHandles()) {
+    @Override
+    public void afterMatchFired(AfterMatchFiredEvent event) {
+        System.out.print("After Activation Fired: " + event.getMatch().getRule().getName()+ ":[");
+        for (FactHandle factHandle : event.getMatch().getFactHandles()) {
             System.out.print(((DefaultFactHandle) factHandle).getId() + ",");
         }
         System.out.println("]");
     }
 
+    @Override
     public void agendaGroupPopped(AgendaGroupPoppedEvent event) {
     }
 
+    @Override
     public void agendaGroupPushed(AgendaGroupPushedEvent event) {
     }
 
+    @Override
     public void beforeRuleFlowGroupActivated(RuleFlowGroupActivatedEvent event) {
     }
 
+    @Override
     public void afterRuleFlowGroupActivated(RuleFlowGroupActivatedEvent event) {
     }
 
+    @Override
     public void beforeRuleFlowGroupDeactivated(RuleFlowGroupDeactivatedEvent event) {
     }
 
+    @Override
     public void afterRuleFlowGroupDeactivated(RuleFlowGroupDeactivatedEvent event) {
     }
 
+    @Override
     public synchronized void objectInserted(ObjectInsertedEvent event) {
         String className = event.getObject().getClass().getName();
         if (!hiddenFacts.contains(className)) {
@@ -142,14 +152,16 @@ public class ManagementConsoleEventListener implements AgendaEventListener, Work
         this.updateTopN(event.getObject().getClass());
     }
 
+    @Override
     public void objectUpdated(ObjectUpdatedEvent event) {
         String className = event.getObject().getClass().getName();
         if (!hiddenFacts.contains(className)) {
             System.out.println(className + " updated: [" + ((DefaultFactHandle) event.getFactHandle()).getId() + "]");
         }
     }
-
-    public synchronized void objectRetracted(ObjectRetractedEvent event) {
+    
+    @Override
+    public synchronized void objectDeleted(ObjectDeletedEvent event) {
         String className = event.getOldObject().getClass().getName();
         if (!hiddenFacts.contains(className)) {
             System.out.println(className + " retracted: [" + ((DefaultFactHandle) event.getFactHandle()).getId() + "]");

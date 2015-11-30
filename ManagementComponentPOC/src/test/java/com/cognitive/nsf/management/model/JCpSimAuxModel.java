@@ -9,11 +9,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.management.InstanceNotFoundException;
 import javax.management.MalformedObjectNameException;
-import org.drools.builder.ResourceType;
-import org.drools.io.Resource;
-import org.drools.io.ResourceFactory;
-import org.drools.runtime.StatefulKnowledgeSession;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.internal.io.ResourceFactory;
 import org.jcpsim.data.JCpSimDataManager;
+import org.kie.api.runtime.KieSession;
 
 /**
  *
@@ -42,11 +42,11 @@ public class JCpSimAuxModel extends AbstractModel {
         this.setResources(internalResources);
     }
 
-    public void setGlobals(StatefulKnowledgeSession ksession) {
+    public void setGlobals(KieSession ksession) {
         ksession.setGlobal("auxProvider", provider);
     }
 
-    public void insertInitialFacts(StatefulKnowledgeSession ksession) {
+    public void insertInitialFacts(KieSession ksession) {
     }
     
     

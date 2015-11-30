@@ -55,13 +55,13 @@ import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import org.antlr.stringtemplate.StringTemplate;
 import org.apache.commons.io.IOUtils;
-import org.drools.builder.ResourceType;
-import org.drools.io.ResourceFactory;
 import org.jcpsim.gui.TopMenu;
 import org.jcpsim.jmx.JCpSimTopMenuMgmt;
 import org.jcpsim.jmx.JCpSimTopMenuMgmtMBean;
 import org.jcpsim.jmx.client.JCpSimPollingClient;
 import org.jcpsim.run.Global;
+import org.kie.api.io.ResourceType;
+import org.kie.internal.io.ResourceFactory;
 
 /**
  *

@@ -93,6 +93,17 @@
                                 <input type="checkbox" name="cdsGenomicStatus" id="cdsGenomicStatus" checked>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label for="cdsAADelay" class="col-sm-2 control-label">AA Delay</label>
+                            <div class="col-xs-2">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="cdsAADelay">
+                                    <span class="input-group-btn">
+                                        <button id="cdsAADelayButton" class="btn btn-info" type="button">Change!</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -214,6 +225,10 @@
                 $("#cdsGenomicStatus").on('switchChange.bootstrapSwitch', function(event, state) {
                     changeCDSStatus("GENOME", state ? "ON" : "OFF");
                 });
+                
+                $("#cdsAADelayButton").click(function() {
+                    changeCDSParamter('AA_DELAY', $("#cdsAADelay").val());
+                });
 
                 $('#chartFields').multiselect({
                     onChange: function(element, checked) {
@@ -288,6 +303,7 @@
                 $("[name='cdsDataGathererStatus']").bootstrapSwitch('state', data.dataGatherer.running, true);
                 $("[name='cdsStatus']").bootstrapSwitch('state', data.alertService.enabled, true);
                 $("[name='cdsGenomicStatus']").bootstrapSwitch('state', data.genomicService.enabled, true);
+                $('#cdsAADelay').val(data.alertService.delay);
             }
 
             function updateUI(data) {
@@ -353,6 +369,25 @@
                 $.ajax({
                     type: "GET",
                     url: "RecommendationConsoleServlet?action=toggle&service=" + service + "&value=" + value
+                }).done(function(data) {
+                    try {
+                        if (data.status && data.status === "error") {
+                            alert("ERROR: " + data.message);
+                            return;
+                        }
+                        updateCDSUI(data);
+                    } finally {
+                        hideWaitDialog();
+                    }
+
+                });
+            }
+            
+            function changeCDSParamter(parameter, value) {
+                showWaitDialog("Changing CDS parameter " + parameter + " to '" + value + "'");
+                $.ajax({
+                    type: "GET",
+                    url: "RecommendationConsoleServlet?action=change&parameter=" + parameter+ "&value=" + value
                 }).done(function(data) {
                     try {
                         if (data.status && data.status === "error") {

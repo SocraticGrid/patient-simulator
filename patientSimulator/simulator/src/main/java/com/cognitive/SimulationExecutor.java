@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -26,24 +25,7 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import org.drools.KnowledgeBase;
-import org.drools.KnowledgeBaseConfiguration;
-import org.drools.KnowledgeBaseFactory;
-import org.drools.builder.KnowledgeBuilder;
-import org.drools.builder.KnowledgeBuilderError;
-import org.drools.builder.KnowledgeBuilderFactory;
-import org.drools.builder.ResourceType;
-import org.drools.builder.conf.DeclarativeAgendaOption;
-import org.drools.conf.EventProcessingOption;
-import org.drools.event.rule.AgendaEventListener;
-import org.drools.event.rule.WorkingMemoryEventListener;
-import org.drools.io.ResourceFactory;
-import org.drools.runtime.KnowledgeSessionConfiguration;
-import org.drools.runtime.StatefulKnowledgeSession;
-import org.drools.runtime.conf.ClockTypeOption;
-import org.drools.runtime.rule.FactHandle;
-
-import org.drools.time.SessionPseudoClock;
+import org.drools.core.time.SessionPseudoClock;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimDataManager;
 import org.jcpsim.data.JCpSimParameter;
@@ -52,6 +34,22 @@ import org.jcpsim.jmx.JCpSimClockMgmtMBean;
 import org.jcpsim.jmx.JCpSimCustomRespiratorMgmt;
 import org.jcpsim.jmx.client.JCpSimPollingClient;
 import org.jcpsim.run.Global;
+import org.kie.api.KieBase;
+import org.kie.api.KieBaseConfiguration;
+import org.kie.api.KieServices;
+import org.kie.api.builder.Message;
+import org.kie.api.builder.Results;
+import org.kie.api.conf.DeclarativeAgendaOption;
+import org.kie.api.conf.EventProcessingOption;
+import org.kie.api.event.rule.AgendaEventListener;
+import org.kie.api.event.rule.RuleRuntimeEventListener;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.rule.FactHandle;
+import org.kie.api.runtime.KieSessionConfiguration;
+import org.kie.api.runtime.conf.ClockTypeOption;
+import org.kie.internal.io.ResourceFactory;
+import org.kie.internal.utils.KieHelper;
 
 /**
  *
@@ -63,7 +61,7 @@ public class SimulationExecutor {
     private boolean paused = false;
     private boolean stop = false;
     private FactHandle suspendExecutionToken;
-    private KnowledgeBase kbase;
+    private KieBase kbase;
     private SimulationListener simulationListener;
     
     private final List<Object> initialFacts = new ArrayList<Object>();
@@ -73,7 +71,7 @@ public class SimulationExecutor {
     private long step = 100;
     
     private Map<JCpSimParameter, Double> initialParameterValues = new EnumMap<JCpSimParameter, Double>(JCpSimParameter.class);
-    private StatefulKnowledgeSession ksession;
+    private KieSession ksession;
     private boolean debug;
     private boolean randomizeStep;
 
@@ -122,14 +120,14 @@ public class SimulationExecutor {
         
         this.simClient = simClient;
 
-        KnowledgeSessionConfiguration conf = KnowledgeBaseFactory.newKnowledgeSessionConfiguration();
+        KieSessionConfiguration conf = KieServices.Factory.get().newKieSessionConfiguration();
         conf.setOption(ClockTypeOption.get("pseudo"));
-        ksession = kbase.newStatefulKnowledgeSession(conf, null);
+        ksession = kbase.newKieSession(conf, null);
 
         if (debug){
             DroolsEventListener eventListener = new DroolsEventListener();
             ksession.addEventListener((AgendaEventListener)eventListener);
-            ksession.addEventListener((WorkingMemoryEventListener)eventListener);
+            ksession.addEventListener((RuleRuntimeEventListener)eventListener);
         }
 
         ksession.setGlobal("jCPSimClient", simClient);
@@ -325,30 +323,28 @@ public class SimulationExecutor {
     }
     
     private void createKBase() {
-        KnowledgeBuilder kbuilder = KnowledgeBuilderFactory.newKnowledgeBuilder();
+        
+        KieHelper helper = new KieHelper();
         
         String simulationDRL = engine.createSimulationDRL();
-        kbuilder.add(ResourceFactory.newClassPathResource("rules/core.drl"), ResourceType.DRL);
-        kbuilder.add(ResourceFactory.newByteArrayResource(simulationDRL.getBytes()), ResourceType.DRL);
+        helper.addResource(ResourceFactory.newClassPathResource("rules/core.drl"), ResourceType.DRL);
+        helper.addResource(ResourceFactory.newByteArrayResource(simulationDRL.getBytes()), ResourceType.DRL);
 
-        if (kbuilder.hasErrors()) {
-            Logger.getLogger(SimulationExecutor.class.getName()).log(Level.SEVERE, "Compilation Errors");
-            Iterator<KnowledgeBuilderError> iterator = kbuilder.getErrors().iterator();
-            while (iterator.hasNext()) {
-                KnowledgeBuilderError knowledgeBuilderError = iterator.next();
-                Logger.getLogger(SimulationExecutor.class.getName()).log(Level.SEVERE, knowledgeBuilderError.getMessage());
-                System.out.println(knowledgeBuilderError.getMessage());
+        Results results = helper.verify();
+        
+        if (results.hasMessages(Message.Level.WARNING, Message.Level.ERROR)){
+            List<Message> messages = results.getMessages(Message.Level.WARNING, Message.Level.ERROR);
+            for (Message message : messages) {
+                System.out.printf("[%s] - %s[%s,%s]: %s", message.getLevel(), message.getPath(), message.getLine(), message.getColumn(), message.getText());
             }
             System.out.println("\n\n"+simulationDRL+"\n\n");
-            throw new IllegalStateException("Compilation Errors");
+            throw new IllegalStateException("Compilation errors were found. Check the logs.");
         }
 
-        KnowledgeBaseConfiguration config = KnowledgeBaseFactory.newKnowledgeBaseConfiguration();
+        KieBaseConfiguration config = KieServices.Factory.get().newKieBaseConfiguration();
         config.setOption( EventProcessingOption.STREAM );
         config.setOption( DeclarativeAgendaOption.ENABLED );
         
-        kbase = KnowledgeBaseFactory.newKnowledgeBase(config);
-        kbase.addKnowledgePackages(kbuilder.getKnowledgePackages());
-
+        this.kbase = helper.build(config);
     }
 }

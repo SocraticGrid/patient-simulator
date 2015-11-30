@@ -5,26 +5,23 @@
 package com.cognitive.nsf.management.model.expectation.drools;
 
 import com.cognitive.nsf.management.model.Model;
-import com.cognitive.nsf.management.model.drools.DroolsModel;
 import com.cognitive.nsf.management.model.expectation.ModelExpectationEvaluatorImpl;
 import com.cognitive.nsf.management.model.expectation.PolicyEnforcer;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.drools.KnowledgeBase;
-import org.drools.KnowledgeBaseConfiguration;
-import org.drools.KnowledgeBaseFactory;
-import org.drools.builder.KnowledgeBuilder;
-import org.drools.builder.KnowledgeBuilderError;
-import org.drools.builder.KnowledgeBuilderFactory;
-import org.drools.builder.ResourceType;
-import org.drools.conf.EventProcessingOption;
-import org.drools.io.Resource;
-import org.drools.io.ResourceFactory;
-import org.drools.runtime.StatefulKnowledgeSession;
 import org.jcpsim.data.JCpSimData;
+import org.kie.api.KieBase;
+import org.kie.api.KieBaseConfiguration;
+import org.kie.api.KieServices;
+import org.kie.api.builder.Message;
+import org.kie.api.builder.Results;
+import org.kie.api.conf.EventProcessingOption;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieSession;
+import org.kie.internal.io.ResourceFactory;
+import org.kie.internal.utils.KieHelper;
 
 
 public class DroolsModelExpectationEvaluator extends ModelExpectationEvaluatorImpl {
@@ -44,47 +41,43 @@ public class DroolsModelExpectationEvaluator extends ModelExpectationEvaluatorIm
         }
 
         public DroolsModelExpectationEvaluator createDroolsModelExpectationEvaluatorInstance() {
-            KnowledgeBase kbase = this.createKBase();
+            KieBase kbase = this.createKBase();
             DroolsModelExpectationEvaluator expectationEvaluator = new DroolsModelExpectationEvaluator(model, kbase);
             
             return expectationEvaluator;
         }
 
-        private KnowledgeBase createKBase() {
+        private KieBase createKBase() {
 
-            KnowledgeBuilder kbuilder = KnowledgeBuilderFactory.newKnowledgeBuilder();
-
+            KieHelper kieHelper = new KieHelper();
+            
             for (Map.Entry<Resource, ResourceType> entry : resources.entrySet()) {
-                kbuilder.add(entry.getKey(), entry.getValue());
-                if (kbuilder.hasErrors()) {
-                    Logger.getLogger(DroolsModel.class.getName()).log(Level.SEVERE, "Compilation Errors in {0}", entry.getKey());
-                    Iterator<KnowledgeBuilderError> iterator = kbuilder.getErrors().iterator();
-                    while (iterator.hasNext()) {
-                        KnowledgeBuilderError knowledgeBuilderError = iterator.next();
-                        Logger.getLogger(DroolsModel.class.getName()).log(Level.SEVERE, knowledgeBuilderError.getMessage());
-                        System.out.println(knowledgeBuilderError.getMessage());
-                    }
-                    throw new IllegalStateException("Compilation Errors");
+                kieHelper.addResource(entry.getKey(), entry.getValue());
+            }
+             
+            Results results = kieHelper.verify();
+            if (results.hasMessages(Message.Level.WARNING, Message.Level.ERROR)){
+                List<Message> messages = results.getMessages(Message.Level.WARNING, Message.Level.ERROR);
+                for (Message message : messages) {
+                    System.out.printf("[%s] - %s[%s,%s]: %s", message.getLevel(), message.getPath(), message.getLine(), message.getColumn(), message.getText());
                 }
+
+                throw new IllegalStateException("Compilation Errors");
             }
 
-            KnowledgeBaseConfiguration conf = KnowledgeBaseFactory.newKnowledgeBaseConfiguration();
-            conf.setOption( EventProcessingOption.STREAM );
-            
-            KnowledgeBase kbase = KnowledgeBaseFactory.newKnowledgeBase(conf);
-            kbase.addKnowledgePackages(kbuilder.getKnowledgePackages());
-
-            return kbase;
+            KieBaseConfiguration conf = KieServices.Factory.get().newKieBaseConfiguration();
+            conf.setOption(EventProcessingOption.STREAM);
+            return kieHelper.build(conf);
         }
     }
     
-    private final KnowledgeBase kbase;
-    private StatefulKnowledgeSession ksession;
+    private final KieBase kbase;
+    private KieSession ksession;
     
-    private DroolsModelExpectationEvaluator(Model model, KnowledgeBase kbase) {
+    private DroolsModelExpectationEvaluator(Model model, KieBase kbase) {
         super(model);
         this.kbase = kbase;
-        this.ksession = this.kbase.newStatefulKnowledgeSession();
+        this.ksession = this.kbase.newKieSession();
     }
 
     @Override

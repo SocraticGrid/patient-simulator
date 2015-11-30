@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import org.drools.definition.type.Modifies;
-import org.drools.definition.type.PropertyReactive;
 import org.jcpsim.data.JCpSimParameter;
+import org.kie.api.definition.type.Modifies;
+import org.kie.api.definition.type.PropertyReactive;
 
 /**
  *

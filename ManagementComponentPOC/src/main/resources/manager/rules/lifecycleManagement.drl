@@ -60,17 +60,32 @@ end
 declare NoMoreModelsToEvaluate
 end
 
+/**
+TODO: Make this rule mode "declarative"
+**/
 rule '[Manager Lifecycle] Populate model globals'
 when
-    $ards:      DiseaseModel(name == 'ARDS')
-    $asthma:    DiseaseModel(name == 'Asthma')
-    $pneumonia: DiseaseModel(name == 'Pneumonia')
+    $models: List() from collect (DiseaseModel())
     not Lock(id == "Populate model globals")
 then
     insert( new Lock("Populate model globals")); 
-    drools.getWorkingMemory().setGlobal("ardsModel",$ards);
-    drools.getWorkingMemory().setGlobal("asthmaModel",$asthma);
-    drools.getWorkingMemory().setGlobal("pneumoniaModel",$pneumonia);
+    
+    for(Object o : $models){
+        DiseaseModel dm = (DiseaseModel) o;
+        switch(dm.getName()){
+            case "ARDS":
+                drools.getWorkingMemory().setGlobal("ardsModel",dm);
+                break;
+            case "Asthma":
+                drools.getWorkingMemory().setGlobal("asthmaModel",dm);
+                break;
+            case "Pneumonia":
+                drools.getWorkingMemory().setGlobal("pneumoniaModel",dm);
+                break;
+            default:
+                throw new IllegalArgumentException("Don't know how to deal with a '"+dm.getName()+"' model");
+        }
+    }
     drools.getWorkingMemory().setGlobal("modelWeights",new HashMap());
 end
 
@@ -130,7 +145,7 @@ then
 
     retract($l);
     retract($l.getPhase());
-    insert(new Phase(PhaseName.STABILIZATION, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(PhaseName.STABILIZATION, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end
 
 
@@ -140,7 +155,7 @@ when
 then
     retract($l);
     retract($l.getPhase());
-    insert(new Phase(PhaseName.CALCULATE_VIOLATIONS, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(PhaseName.CALCULATE_VIOLATIONS, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end
 
 
@@ -178,7 +193,7 @@ then
     insert(new FirstConstraintViolationCalculationResult($c));
     retract($c);
     retract($p);
-    insert(new Phase(PhaseName.STABILIZATION, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(PhaseName.STABILIZATION, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end
 
 rule '[Manager Lifecycle] Compare Models CVs: The new model performs worst than the previous'
@@ -208,7 +223,7 @@ then
 
 
     //change phase
-    insert(new Phase(nextPhaseName, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(nextPhaseName, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end
 
 rule '[Manager Lifecycle] Compare Models CVs: The new model performs better than the previous but its weight is grater that threshold'
@@ -239,7 +254,7 @@ then
     }
 
     //change phase
-    insert(new Phase(nextPhaseName, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(nextPhaseName, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end
 
 rule '[Manager Lifecycle] Compare Models CVs: The new model performs better than the previous and its weight is less that threshold'
@@ -259,7 +274,7 @@ then
     manager.requestDiseaseAction(resumeDiseaseRequest);
 
     //change phase
-    insert(new Phase(PhaseName.NORMAL, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(PhaseName.NORMAL, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end
    
 
@@ -283,7 +298,7 @@ then
     manager.requestDiseaseAction(resumeDiseaseRequest);
 
     //change phase
-    insert(new Phase(PhaseName.NORMAL, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(PhaseName.NORMAL, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end 
 
 rule '[Manager Lifecycle] No more models to evaluate but first model performs worst than threshold'
@@ -304,7 +319,7 @@ when
 then
     retract($l);
     retract($l.getPhase());
-    insert(new Phase(PhaseName.CALCULATE_VIOLATIONS, ((org.drools.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
+    insert(new Phase(PhaseName.CALCULATE_VIOLATIONS, ((org.drools.core.base.DefaultKnowledgeHelper)drools).getWorkingMemory().getSessionClock().getCurrentTime()));
 end 
 
 
@@ -312,7 +327,7 @@ end
 
 
 
-function void resetModelStack(org.drools.spi.KnowledgeHelper drools, DiseaseModel currentModel){
+function void resetModelStack(org.drools.core.spi.KnowledgeHelper drools, DiseaseModel currentModel){
     DiseaseModel ardsModel = (DiseaseModel)drools.getWorkingMemory().getGlobal("ardsModel");
     DiseaseModel asthmaModel = (DiseaseModel)drools.getWorkingMemory().getGlobal("asthmaModel");
     DiseaseModel pneumoniaModel = (DiseaseModel)drools.getWorkingMemory().getGlobal("pneumoniaModel");
@@ -334,7 +349,7 @@ function void resetModelStack(org.drools.spi.KnowledgeHelper drools, DiseaseMode
 
 }
 
-function DiseaseModel getNextModel(org.drools.spi.KnowledgeHelper drools, DiseaseModel currentModel){
+function DiseaseModel getNextModel(org.drools.core.spi.KnowledgeHelper drools, DiseaseModel currentModel){
 
     java.util.List models = (java.util.List)drools.getWorkingMemory().getGlobal("models");
     

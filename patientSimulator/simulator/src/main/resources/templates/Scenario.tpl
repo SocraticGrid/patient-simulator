@@ -4,7 +4,7 @@ package com.cognitive.simulator;
 import java.util.Deque;
 import java.util.ArrayDeque;
 
-import org.drools.time.SessionPseudoClock;
+import org.drools.core.time.SessionPseudoClock;
 
 import org.jcpsim.data.JCpSimDataManager;
 import org.jcpsim.data.*;

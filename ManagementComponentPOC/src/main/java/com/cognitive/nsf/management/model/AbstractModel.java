@@ -7,8 +7,8 @@ package com.cognitive.nsf.management.model;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.drools.builder.ResourceType;
-import org.drools.io.Resource;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
 
 public abstract class AbstractModel implements DiseaseModel {
 

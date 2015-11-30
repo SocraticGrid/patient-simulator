@@ -42,8 +42,11 @@ public class PneumoniaModelTest {
     }
     
     @Test
-    public void doTest(){
+    public void doTest() throws Exception{
+        manager.startGatheringData();
         
+        
+        Thread.sleep(120000);
     }
     
     

@@ -4,7 +4,7 @@
  */
 package com.cognitive.nsf.management.model;
 
-import org.drools.runtime.StatefulKnowledgeSession;
+import org.kie.api.runtime.KieSession;
 
 /**
  *
@@ -20,10 +20,10 @@ public class PneumoniaModel extends AbstractModel {
 
     
     
-    public void setGlobals(StatefulKnowledgeSession ksession) {
+    public void setGlobals(KieSession ksession) {
     }
 
-    public void insertInitialFacts(StatefulKnowledgeSession ksession) {
+    public void insertInitialFacts(KieSession ksession) {
     }
 
     @Override

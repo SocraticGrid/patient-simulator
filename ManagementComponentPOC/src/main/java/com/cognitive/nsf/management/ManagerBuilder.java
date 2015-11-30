@@ -11,11 +11,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.drools.builder.ResourceType;
-import org.drools.event.rule.AgendaEventListener;
-import org.drools.event.rule.WorkingMemoryEventListener;
-import org.drools.io.Resource;
 import org.jcpsim.data.JCpSimDataManager;
+import org.kie.api.event.rule.AgendaEventListener;
+import org.kie.api.event.rule.RuleRuntimeEventListener;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
 
 
 public class ManagerBuilder {
@@ -26,7 +26,7 @@ public class ManagerBuilder {
     private Map<Resource, ResourceType> internalResources = new LinkedHashMap<Resource, ResourceType>();
     private Map<String, Object> internalGlobals = new HashMap<String, Object>();
     private List<AgendaEventListener> agendaEventListeners = new ArrayList<AgendaEventListener>();
-    private List<WorkingMemoryEventListener> workingMemoryEventListeners = new ArrayList<WorkingMemoryEventListener>();
+    private List<RuleRuntimeEventListener> workingMemoryEventListeners = new ArrayList<RuleRuntimeEventListener>();
     private ManagerEventListener eventListener;
     private double threshold = 0.0;
 
@@ -73,7 +73,7 @@ public class ManagerBuilder {
         return this;
     }
 
-    public ManagerBuilder addWorkingMemoryEventListener(WorkingMemoryEventListener workingMemoryEventListener) {
+    public ManagerBuilder addWorkingMemoryEventListener(RuleRuntimeEventListener workingMemoryEventListener) {
         workingMemoryEventListeners.add(workingMemoryEventListener);
         return this;
     }
@@ -104,7 +104,7 @@ public class ManagerBuilder {
             manager.addAgendaEventListener(agendaEventListener);
         }
         
-        for (WorkingMemoryEventListener workingMemoryEventListener : this.workingMemoryEventListeners) {
+        for (RuleRuntimeEventListener workingMemoryEventListener : this.workingMemoryEventListeners) {
             manager.addWorkingMemoryEventListener(workingMemoryEventListener);
         }
         

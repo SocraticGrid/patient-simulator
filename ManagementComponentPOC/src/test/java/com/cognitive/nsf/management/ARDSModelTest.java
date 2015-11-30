@@ -16,7 +16,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- *
+ * These tests must be executed while JCPSim is running and its Custom Respirator
+ * Scenario is active.
  * @author esteban
  */
 public class ARDSModelTest {

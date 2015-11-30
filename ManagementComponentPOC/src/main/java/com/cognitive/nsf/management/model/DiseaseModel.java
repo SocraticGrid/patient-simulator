@@ -6,9 +6,9 @@ package com.cognitive.nsf.management.model;
 
 import java.util.Date;
 import java.util.Map;
-import org.drools.builder.ResourceType;
-import org.drools.io.Resource;
-import org.drools.runtime.StatefulKnowledgeSession;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieSession;
 
 /**
  *
@@ -20,8 +20,8 @@ public interface DiseaseModel {
     public void setActive(boolean active);
     public boolean isActive();
     public Map<Resource, ResourceType> getResources();
-    public void setGlobals(StatefulKnowledgeSession ksession);
-    public void insertInitialFacts(StatefulKnowledgeSession ksession);
+    public void setGlobals(KieSession ksession);
+    public void insertInitialFacts(KieSession ksession);
     public void setLastActivationDate(Date lastActivationDate);
     public Date getLastActivationDate();
     

@@ -6,23 +6,23 @@ package com.cognitive.nsf.management.model.drools;
 
 import com.cognitive.nsf.management.model.Model;
 import com.cognitive.nsf.management.model.ModelSessionManager;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.drools.KnowledgeBase;
-import org.drools.KnowledgeBaseConfiguration;
-import org.drools.KnowledgeBaseFactory;
-import org.drools.builder.KnowledgeBuilder;
-import org.drools.builder.KnowledgeBuilderError;
-import org.drools.builder.KnowledgeBuilderFactory;
-import org.drools.builder.ResourceType;
-import org.drools.conf.EventProcessingOption;
-import org.drools.io.Resource;
-import org.drools.io.ResourceFactory;
-import org.drools.runtime.StatefulKnowledgeSession;
 import org.jcpsim.data.JCpSimData;
+import org.kie.api.KieBase;
+import org.kie.api.KieBaseConfiguration;
+import org.kie.api.KieServices;
+import org.kie.api.builder.Message;
+import org.kie.api.builder.Results;
+import org.kie.api.conf.EventProcessingOption;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieSession;
+import org.kie.internal.io.ResourceFactory;
+import org.kie.internal.utils.KieHelper;
 
 /**
  * Drools' based model. This class holds an internal Drools session that is
@@ -46,49 +46,48 @@ public class DroolsModel implements Model {
         }
 
         public DroolsModel createDroolsModelInstance() {
-            KnowledgeBase kbase = this.createKBase();
+            KieBase kbase = this.createKBase();
             DroolsModel model = new DroolsModel(kbase);
-            
+
             return model;
         }
 
-        private KnowledgeBase createKBase() {
+        private KieBase createKBase() {
 
-            KnowledgeBuilder kbuilder = KnowledgeBuilderFactory.newKnowledgeBuilder();
+            KieHelper helper = new KieHelper();
 
             for (Map.Entry<Resource, ResourceType> entry : resources.entrySet()) {
-                kbuilder.add(entry.getKey(), entry.getValue());
-                if (kbuilder.hasErrors()) {
-                    Logger.getLogger(DroolsModel.class.getName()).log(Level.SEVERE, "Compilation Errors in {0}", entry.getKey());
-                    Iterator<KnowledgeBuilderError> iterator = kbuilder.getErrors().iterator();
-                    while (iterator.hasNext()) {
-                        KnowledgeBuilderError knowledgeBuilderError = iterator.next();
-                        Logger.getLogger(DroolsModel.class.getName()).log(Level.SEVERE, knowledgeBuilderError.getMessage());
-                        System.out.println(knowledgeBuilderError.getMessage());
-                    }
-                    throw new IllegalStateException("Compilation Errors");
-                }
+                helper.addResource(entry.getKey(), entry.getValue());
             }
 
-            KnowledgeBaseConfiguration conf = KnowledgeBaseFactory.newKnowledgeBaseConfiguration();
-            conf.setOption( EventProcessingOption.STREAM );
-            
-            KnowledgeBase kbase = KnowledgeBaseFactory.newKnowledgeBase(conf);
-            kbase.addKnowledgePackages(kbuilder.getKnowledgePackages());
+            Results results = helper.verify();
 
-            return kbase;
+            if (results.hasMessages(Message.Level.WARNING, Message.Level.ERROR)) {
+                List<Message> messages = results.getMessages(Message.Level.WARNING, Message.Level.ERROR);
+                for (Message message : messages) {
+                    String errorMessage = String.format("[%s] - %s[%s,%s]: %s", message.getLevel(), message.getPath(), message.getLine(), message.getColumn(), message.getText());
+                    System.out.println(errorMessage);
+                    Logger.getLogger(DroolsModel.class.getName()).log(Level.SEVERE, errorMessage);
+                }
+                throw new IllegalStateException("Compilation errors were found. Check the logs.");
+            }
+
+            KieBaseConfiguration config = KieServices.Factory.get().newKieBaseConfiguration();
+            config.setOption(EventProcessingOption.STREAM);
+
+            return helper.build(config);
         }
     }
 
-    private final KnowledgeBase kbase;
-    private StatefulKnowledgeSession ksession;
+    private final KieBase kbase;
+    private KieSession ksession;
     private ModelSessionManager manager;
-    
-    private DroolsModel(KnowledgeBase kbase) {
+
+    private DroolsModel(KieBase kbase) {
         this.kbase = kbase;
-        this.ksession = this.kbase.newStatefulKnowledgeSession();
+        this.ksession = this.kbase.newKieSession();
     }
-    
+
     public void init(ModelSessionManager manager) {
         this.manager = manager;
         this.ksession.setGlobal("model", this);
@@ -100,7 +99,7 @@ public class DroolsModel implements Model {
         this.ksession.fireAllRules();
     }
 
-    public void dispose(){
+    public void dispose() {
         ksession.dispose();
     }
 
@@ -108,5 +107,5 @@ public class DroolsModel implements Model {
     public String toString() {
         return "DroolsModel{" + '}';
     }
-    
+
 }

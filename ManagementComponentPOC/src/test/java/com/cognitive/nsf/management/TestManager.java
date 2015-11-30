@@ -17,10 +17,12 @@ public class TestManager extends Manager {
 
     public TestManager(List<DiseaseModel> models, JCpSimDataManager dataManager, long sampleRate) {
         super(models, dataManager, sampleRate);
+        this.createAndConfigureKSession();
     }
 
     public TestManager(List<DiseaseModel> models, JCpSimDataManager dataManager, JCpSimDataGatherer dataGatherer) {
         super(models, dataManager, dataGatherer);
+        this.createAndConfigureKSession();
     }
 
     public void insertFact(Object fact){

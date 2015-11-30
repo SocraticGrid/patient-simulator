@@ -1,7 +1,7 @@
 package com.cognitive.simulator;
 
-import org.drools.runtime.rule.Activation;
-import org.drools.time.SessionPseudoClock;
+//import org.drools.runtime.rule.Activation;
+import org.drools.core.time.SessionPseudoClock;
 
 import org.jcpsim.data.JCpSimDataManager;
 import org.jcpsim.data.JCpSimData;

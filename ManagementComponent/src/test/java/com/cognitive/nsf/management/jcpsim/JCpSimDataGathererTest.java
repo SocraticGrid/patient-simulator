@@ -17,6 +17,8 @@ import com.cognitive.nsf.management.model.expectation.PolicyEnforcer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import static org.hamcrest.CoreMatchers.is;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimParameter;
 import org.jcpsim.jmx.client.JCpSimPollingClient;
@@ -26,7 +28,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- *
+ * These tests must be executed while JCPSim is running and the Custom Respirator
+ * Scenario is active.
  * @author esteban
  */
 public class JCpSimDataGathererTest {
@@ -34,7 +37,20 @@ public class JCpSimDataGathererTest {
     public static final String DEFAULT_JCP_SIM_CLIENT_JMX_URL = Global.MODE.SIM.getJMXUrl();
     private static JCpSimPollingClient client;
     
-    private class ConstantParameterAsserter implements JCpSimDataReceivedEventListener{
+    private abstract class TestAsserter implements JCpSimDataReceivedEventListener{
+        protected AtomicInteger numberOfFailedAssertions = new AtomicInteger(0);
+
+        public int getNumberOfFailedAssertions() {
+            return numberOfFailedAssertions.get();
+        }
+        
+        public boolean hasFailedAssertions(){
+            return this.getNumberOfFailedAssertions() != 0;
+        }
+        
+    }
+    
+    private class ConstantParameterAsserter extends TestAsserter{
 
         private final JCpSimParameter parameter;
         private Double oldValue = null;
@@ -47,7 +63,11 @@ public class JCpSimDataGathererTest {
             double newValue = data.get(parameter);
 
             if (oldValue != null) {
-                Assert.assertEquals(newValue, oldValue, 0.001);
+                try{
+                    Assert.assertEquals(newValue, oldValue, 0.001);
+                } catch (AssertionError e){
+                    this.numberOfFailedAssertions.incrementAndGet();
+                }
             }
             
             oldValue = newValue;
@@ -55,7 +75,7 @@ public class JCpSimDataGathererTest {
         
     }
     
-    private class VariableParameterAsserter implements JCpSimDataReceivedEventListener{
+    private class VariableParameterAsserter extends TestAsserter{
 
         private final JCpSimParameter parameter;
         private Double oldValue = null;
@@ -69,7 +89,9 @@ public class JCpSimDataGathererTest {
 
             
             if (oldValue != null) {
-                Assert.assertTrue(Double.compare(newValue, oldValue) != 0);
+                if(Double.compare(newValue, oldValue) == 0){
+                    this.numberOfFailedAssertions.incrementAndGet();
+                }
             }
             
             oldValue = newValue;
@@ -109,10 +131,10 @@ public class JCpSimDataGathererTest {
         Model complianceVariableModel = new RangedSingleParameterModel(JCpSimParameter.P_COMPLIANCE, 0.04, 0.12, 0.01);
         Model peepVariableModel = new RangedSingleParameterModel(JCpSimParameter.V_PEEP, 4, 6, 0.01);
         
-        JCpSimDataReceivedEventListener constantComplianceAsserter = new ConstantParameterAsserter(JCpSimParameter.P_COMPLIANCE);
-        JCpSimDataReceivedEventListener constantPEEPAsserter = new ConstantParameterAsserter(JCpSimParameter.V_PEEP);
-        JCpSimDataReceivedEventListener varialbeComplianceAsserter = new VariableParameterAsserter(JCpSimParameter.P_COMPLIANCE);
-        JCpSimDataReceivedEventListener varialbePEEPAsserter = new VariableParameterAsserter(JCpSimParameter.V_PEEP);
+        TestAsserter constantComplianceAsserter = new ConstantParameterAsserter(JCpSimParameter.P_COMPLIANCE);
+        TestAsserter constantPEEPAsserter = new ConstantParameterAsserter(JCpSimParameter.V_PEEP);
+        TestAsserter varialbeComplianceAsserter = new VariableParameterAsserter(JCpSimParameter.P_COMPLIANCE);
+        TestAsserter varialbePEEPAsserter = new VariableParameterAsserter(JCpSimParameter.V_PEEP);
         
         PolicyEnforcer policyEnforcer = new MinimumWeightPolicyEnforcer();
         
@@ -129,6 +151,9 @@ public class JCpSimDataGathererTest {
         Thread.sleep(5000);
         g.stop();
         
+        Assert.assertThat(varialbePEEPAsserter.hasFailedAssertions(), is(false));
+        Assert.assertThat(constantComplianceAsserter.hasFailedAssertions(), is(false));
+        
         g.removeEventListener(varialbePEEPAsserter);
         g.removeEventListener(constantComplianceAsserter);
         
@@ -139,6 +164,9 @@ public class JCpSimDataGathererTest {
         g.start();
         Thread.sleep(5000);
         g.stop();
+        
+        Assert.assertThat(constantPEEPAsserter.hasFailedAssertions(), is(false));
+        Assert.assertThat(varialbeComplianceAsserter.hasFailedAssertions(), is(false));
 
     }
     

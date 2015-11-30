@@ -29,6 +29,7 @@ import javax.persistence.EntityManager;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimParameter;
 import org.jcpsim.gui.TopMenu;
+import org.jcpsim.jmx.JCpSimArterialLineMgmt;
 import org.jcpsim.jmx.JCpSimCustomRespiratorMgmt;
 import org.jcpsim.jmx.JCpSimTopMenuMgmt;
 import org.jcpsim.jmx.JCpSimTopMenuMgmtMBean;

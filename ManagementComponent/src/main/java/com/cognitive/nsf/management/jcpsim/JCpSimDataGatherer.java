@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimDataProvider;
 
@@ -24,20 +25,24 @@ public class JCpSimDataGatherer {
         
         public void run() {
             if (running){
-                //get data from JCpSim
-                final JCpSimData data = dataProvider.getData();
-                
-                //notify listeners
-                for (final JCpSimDataReceivedEventListener listener : eventListeners) {
-                    eventListenersNotificationExecutor.execute(new Runnable() {
-                        public void run() {
-                            listener.onDataReceived(data);
-                        }
-                    });
+                try{
+                    //get data from JCpSim
+                    final JCpSimData data = dataProvider.getData();
+
+                    //notify listeners
+                    for (final JCpSimDataReceivedEventListener listener : eventListeners) {
+                        eventListenersNotificationExecutor.execute(new Runnable() {
+                            public void run() {
+                                listener.onDataReceived(data);
+                            }
+                        });
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    //schedule new execution
+                    dataGathererThreadExecutor.schedule(this, sampleRate, TimeUnit.MILLISECONDS);
                 }
-                
-                //schedule new execution
-                dataGathererThreadExecutor.schedule(this, sampleRate, TimeUnit.MILLISECONDS);
             }
         }
         

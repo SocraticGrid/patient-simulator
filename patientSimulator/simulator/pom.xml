@@ -16,7 +16,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <drools.version>5.6.0.Final</drools.version>
+        <drools.version>6.4.0-SNAPSHOT</drools.version>
     </properties>
 
     <dependencies>
@@ -27,15 +27,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.drools</groupId>
-            <artifactId>knowledge-api</artifactId>
-            <version>${drools.version}</version>
-        </dependency>
-        <!--dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-api</artifactId>
             <version>${drools.version}</version>
-        </dependency-->
+        </dependency>
         <dependency>
             <groupId>org.drools</groupId>
             <artifactId>drools-core</artifactId>

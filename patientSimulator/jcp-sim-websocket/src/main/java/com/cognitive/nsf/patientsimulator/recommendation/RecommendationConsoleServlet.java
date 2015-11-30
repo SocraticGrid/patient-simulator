@@ -5,6 +5,7 @@
  */
 package com.cognitive.nsf.patientsimulator.recommendation;
 
+import com.cognitive.bp.poc.model.RecommendationChange;
 import com.cognitive.bp.poc.model.ToggleService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -54,6 +55,12 @@ public class RecommendationConsoleServlet extends HttpServlet {
                     result = this.toggle(service, value);
                     break;
                 }
+                case "change": {
+                    String parameter = request.getParameter("parameter");
+                    String value = request.getParameter("value");
+                    result = this.change(parameter, value);
+                    break;
+                }
                 case "getStatus": {
                     result = this.getStatus();
                     break;
@@ -91,6 +98,17 @@ public class RecommendationConsoleServlet extends HttpServlet {
         }
         return this.getStatus();
     }
+    
+    private JsonElement change(String parameter, String value) {
+        RecommendationChange.PARAMETER p = RecommendationChange.PARAMETER.valueOf(parameter);
+        try {
+            RecommendationContextListener.recommendationSystem.changeParameter(p, value);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new JsonParser().parse("{status: 'error', message: '" + e.getMessage().replaceAll("'", "") + "'}");
+        }
+        return this.getStatus();
+    }
 
     private JsonElement getStatus() {
         JsonObject dataGatherer = new JsonObject();
@@ -98,6 +116,7 @@ public class RecommendationConsoleServlet extends HttpServlet {
         
         JsonObject alertService = new JsonObject();
         alertService.addProperty("enabled", RecommendationContextListener.recommendationSystem.areAlertsActive());
+        alertService.addProperty("delay", RecommendationContextListener.recommendationSystem.getAlertsDelay());
 
         JsonObject genomicService = new JsonObject();
         genomicService.addProperty("enabled", RecommendationContextListener.recommendationSystem.isGenomeServiceActive());

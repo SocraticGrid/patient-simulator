@@ -13,49 +13,48 @@ import com.cognitive.nsf.management.fact.control.Phase.PhaseName;
 import com.cognitive.nsf.management.jcpsim.JCpSimDataGatherer;
 import com.cognitive.nsf.management.jcpsim.JCpSimDataReceivedEventListener;
 import com.cognitive.nsf.management.model.DiseaseModel;
+import com.cognitive.nsf.management.rule.BestModelAccumulateFunction;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.drools.KnowledgeBase;
-import org.drools.KnowledgeBaseConfiguration;
-import org.drools.KnowledgeBaseFactory;
-import org.drools.builder.KnowledgeBuilder;
-import org.drools.builder.KnowledgeBuilderConfiguration;
-import org.drools.builder.KnowledgeBuilderError;
-import org.drools.builder.KnowledgeBuilderFactory;
-import org.drools.builder.ResourceType;
-import org.drools.conf.EventProcessingOption;
-import org.drools.definition.KnowledgePackage;
-import org.drools.event.rule.ActivationCancelledEvent;
-import org.drools.event.rule.ActivationCreatedEvent;
-import org.drools.event.rule.AfterActivationFiredEvent;
-import org.drools.event.rule.AgendaEventListener;
-import org.drools.event.rule.AgendaGroupPoppedEvent;
-import org.drools.event.rule.AgendaGroupPushedEvent;
-import org.drools.event.rule.BeforeActivationFiredEvent;
-import org.drools.event.rule.ObjectInsertedEvent;
-import org.drools.event.rule.ObjectRetractedEvent;
-import org.drools.event.rule.ObjectUpdatedEvent;
-import org.drools.event.rule.RuleFlowGroupActivatedEvent;
-import org.drools.event.rule.RuleFlowGroupDeactivatedEvent;
-import org.drools.event.rule.WorkingMemoryEventListener;
-import org.drools.io.Resource;
-import org.drools.io.ResourceFactory;
-import org.drools.runtime.StatefulKnowledgeSession;
-import org.drools.runtime.rule.FactHandle;
-import org.drools.runtime.rule.QueryResults;
-import org.drools.runtime.rule.QueryResultsRow;
+
 import org.jcpsim.data.JCpSimData;
 import org.jcpsim.data.JCpSimDataManager;
 import org.jcpsim.data.JCpSimParameter;
+import org.kie.api.KieBase;
+import org.kie.api.KieBaseConfiguration;
+import org.kie.api.KieServices;
+import org.kie.api.builder.Message;
+import org.kie.api.builder.Results;
+import org.kie.api.conf.EventProcessingOption;
+import org.kie.api.event.rule.AfterMatchFiredEvent;
+import org.kie.api.event.rule.AgendaEventListener;
+import org.kie.api.event.rule.AgendaGroupPoppedEvent;
+import org.kie.api.event.rule.AgendaGroupPushedEvent;
+import org.kie.api.event.rule.BeforeMatchFiredEvent;
+import org.kie.api.event.rule.MatchCancelledEvent;
+import org.kie.api.event.rule.MatchCreatedEvent;
+import org.kie.api.event.rule.ObjectDeletedEvent;
+import org.kie.api.event.rule.ObjectInsertedEvent;
+import org.kie.api.event.rule.ObjectUpdatedEvent;
+import org.kie.api.event.rule.RuleFlowGroupActivatedEvent;
+import org.kie.api.event.rule.RuleFlowGroupDeactivatedEvent;
+import org.kie.api.event.rule.RuleRuntimeEventListener;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieSession;
+import org.kie.api.runtime.rule.FactHandle;
+import org.kie.api.runtime.rule.QueryResults;
+import org.kie.api.runtime.rule.QueryResultsRow;
+import org.kie.internal.builder.conf.AccumulateFunctionOption;
+import org.kie.internal.io.ResourceFactory;
+import org.kie.internal.utils.KieHelper;
 
 /**
  *
@@ -67,11 +66,11 @@ public class Manager {
     private final Map<DiseaseModel, FactHandle> models = new LinkedHashMap<DiseaseModel, FactHandle>();
     private final JCpSimDataGatherer dataGatherer;
     private final JCpSimDataManager dataManager;
-    protected StatefulKnowledgeSession ksession;
+    protected KieSession ksession;
     private Map<Resource, ResourceType> internalResources = new LinkedHashMap<Resource, ResourceType>();
     private Map<String, Object> internalGlobals = new HashMap<String, Object>();
     private List<AgendaEventListener> agendaEventListeners = new ArrayList<AgendaEventListener>();
-    private List<WorkingMemoryEventListener> workingMemoryEventListeners = new ArrayList<WorkingMemoryEventListener>();
+    private List<RuleRuntimeEventListener> workingMemoryEventListeners = new ArrayList<RuleRuntimeEventListener>();
     private FactHandle patientSafetyLock;
     private FactHandle recommendationsSafetyLock;
     private FactHandle automaticModelSwitchLock;
@@ -121,6 +120,8 @@ public class Manager {
         internalResources.put(ResourceFactory.newClassPathResource("rules/VentilatorManagementModels.xls"), ResourceType.DTABLE);
 
         //add diagnosis rules
+        
+        
         internalResources.put(ResourceFactory.newClassPathResource("rules/SimpleDiagnosisRules.xls"), ResourceType.DTABLE);
         internalResources.put(ResourceFactory.newClassPathResource("rules/WindowedDiagnosisRules.xls"), ResourceType.DTABLE);
 
@@ -328,23 +329,21 @@ public class Manager {
         agendaEventListeners.add(agendaEventListener);
     }
 
-    protected void addWorkingMemoryEventListener(WorkingMemoryEventListener workingMemoryEventListener) {
+    protected void addWorkingMemoryEventListener(RuleRuntimeEventListener workingMemoryEventListener) {
         workingMemoryEventListeners.add(workingMemoryEventListener);
     }
 
     protected void createAndConfigureKSession() {
 
-        Collection<KnowledgePackage> knowledgePackages = this.compileResources(internalResources);
-
         //create the kbase
-        KnowledgeBase kbase = this.createKbase(knowledgePackages);
+        KieBase kbase = this.createKbase(internalResources);
 
-        StatefulKnowledgeSession newKsession = kbase.newStatefulKnowledgeSession();
+        KieSession newKsession = kbase.newKieSession();
 
         CompositeSessionListener listener = new CompositeSessionListener(agendaEventListeners, workingMemoryEventListeners);
 
         newKsession.addEventListener((AgendaEventListener) listener);
-        newKsession.addEventListener((WorkingMemoryEventListener) listener);
+        newKsession.addEventListener((RuleRuntimeEventListener) listener);
 
         newKsession.setGlobal("manager", this);
 
@@ -374,53 +373,47 @@ public class Manager {
         this.ksession = newKsession;
     }
 
-    private KnowledgeBase createKbase(Collection<KnowledgePackage> knowledgePackages) {
-        KnowledgeBaseConfiguration conf = KnowledgeBaseFactory.newKnowledgeBaseConfiguration();
-        conf.setOption(EventProcessingOption.STREAM);
+    private KieBase createKbase(Map<Resource, ResourceType> resources) {
 
-        KnowledgeBase kbase = KnowledgeBaseFactory.newKnowledgeBase(conf);
-        kbase.addKnowledgePackages(knowledgePackages);
-
-        return kbase;
-    }
-
-    private Collection<KnowledgePackage> compileResources(Map<Resource, ResourceType> resources) {
-
-        KnowledgeBuilderConfiguration conf = KnowledgeBuilderFactory.newKnowledgeBuilderConfiguration();
-        conf.setProperty("drools.accumulate.function.bestModel", "com.cognitive.nsf.management.rule.BestModelAccumulateFunction");
-
-        KnowledgeBuilder kbuilder = KnowledgeBuilderFactory.newKnowledgeBuilder(conf);
-
+        //"drools.accumulate.function.bestModel"
+        KieHelper helper = new KieHelper(AccumulateFunctionOption.get("bestModel", new BestModelAccumulateFunction()));
+        
         for (Map.Entry<Resource, ResourceType> entry : resources.entrySet()) {
-            kbuilder.add(entry.getKey(), entry.getValue());
-            if (kbuilder.hasErrors()) {
-                Logger.getLogger(Manager.class.getName()).log(Level.SEVERE, "Compilation Errors in {0}", entry.getKey());
-                Iterator<KnowledgeBuilderError> iterator = kbuilder.getErrors().iterator();
-                while (iterator.hasNext()) {
-                    KnowledgeBuilderError knowledgeBuilderError = iterator.next();
-                    Logger.getLogger(Manager.class.getName()).log(Level.SEVERE, knowledgeBuilderError.getMessage());
-                    System.out.println(knowledgeBuilderError.getMessage());
-                }
-                throw new IllegalStateException("Compilation Errors");
+            helper.addResource(entry.getKey(), entry.getValue());
+        }
+        
+        Results results = helper.verify();
+        if (results.hasMessages(Message.Level.WARNING, Message.Level.ERROR)){
+            List<Message> messages = results.getMessages(Message.Level.WARNING, Message.Level.ERROR);
+            for (Message message : messages) {
+                String outMessage = String.format("[%s] - %s[%s,%s]: %s", message.getLevel(), message.getPath(), message.getLine(), message.getColumn(), message.getText());
+                System.out.printf(outMessage);
+                Logger.getLogger(Manager.class.getName()).log(Level.SEVERE, outMessage);
             }
+
+            throw new IllegalStateException("Compilation errors were found. Check the logs.");
         }
 
-        return kbuilder.getKnowledgePackages();
+        
+        KieBaseConfiguration conf = KieServices.Factory.get().newKieBaseConfiguration();
+        conf.setOption(EventProcessingOption.STREAM);
+        
+        return helper.build(conf);
     }
 
     public void setEventListener(ManagerEventListener eventListener) {
         this.eventListener = eventListener;
     }
 
-    private class CompositeSessionListener implements AgendaEventListener, WorkingMemoryEventListener {
+    private class CompositeSessionListener implements AgendaEventListener, RuleRuntimeEventListener {
 
         private List<AgendaEventListener> agendaEventListeners = new ArrayList<AgendaEventListener>();
-        private List<WorkingMemoryEventListener> workingMemoryEventListeners = new ArrayList<WorkingMemoryEventListener>();
+        private List<RuleRuntimeEventListener> workingMemoryEventListeners = new ArrayList<RuleRuntimeEventListener>();
 
         public CompositeSessionListener() {
         }
 
-        public CompositeSessionListener(List<AgendaEventListener> agendaEventListeners, List<WorkingMemoryEventListener> workingMemoryEventListeners) {
+        public CompositeSessionListener(List<AgendaEventListener> agendaEventListeners, List<RuleRuntimeEventListener> workingMemoryEventListeners) {
             this.agendaEventListeners.addAll(agendaEventListeners);
             this.workingMemoryEventListeners.addAll(workingMemoryEventListeners);
         }
@@ -429,85 +422,98 @@ public class Manager {
             agendaEventListeners.add(agendaEventListener);
         }
 
-        public void addWorkingMemoryEventListener(WorkingMemoryEventListener workingMemoryEventListener) {
+        public void addWorkingMemoryEventListener(RuleRuntimeEventListener workingMemoryEventListener) {
             workingMemoryEventListeners.add(workingMemoryEventListener);
         }
 
-        public void activationCreated(ActivationCreatedEvent ace) {
+        @Override
+        public void matchCreated(MatchCreatedEvent event) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
-                agendaEventListener.activationCreated(ace);
+                agendaEventListener.matchCreated(event);
             }
         }
 
-        public void activationCancelled(ActivationCancelledEvent ace) {
+        @Override
+        public void matchCancelled(MatchCancelledEvent ace) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
-                agendaEventListener.activationCancelled(ace);
+                agendaEventListener.matchCancelled(ace);
             }
         }
 
-        public void beforeActivationFired(BeforeActivationFiredEvent bafe) {
+        @Override
+        public void beforeMatchFired(BeforeMatchFiredEvent bafe) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
-                agendaEventListener.beforeActivationFired(bafe);
+                agendaEventListener.beforeMatchFired(bafe);
             }
         }
 
-        public void afterActivationFired(AfterActivationFiredEvent aafe) {
+        @Override
+        public void afterMatchFired(AfterMatchFiredEvent aafe) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
-                agendaEventListener.afterActivationFired(aafe);
+                agendaEventListener.afterMatchFired(aafe);
             }
         }
 
+        @Override
         public void agendaGroupPopped(AgendaGroupPoppedEvent agpe) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
                 agendaEventListener.agendaGroupPopped(agpe);
             }
         }
 
+        @Override
         public void agendaGroupPushed(AgendaGroupPushedEvent agpe) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
                 agendaEventListener.agendaGroupPushed(agpe);
             }
         }
 
+        @Override
         public void beforeRuleFlowGroupActivated(RuleFlowGroupActivatedEvent rfgae) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
                 agendaEventListener.beforeRuleFlowGroupActivated(rfgae);
             }
         }
 
+        @Override
         public void afterRuleFlowGroupActivated(RuleFlowGroupActivatedEvent rfgae) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
                 agendaEventListener.afterRuleFlowGroupActivated(rfgae);
             }
         }
 
+        @Override
         public void beforeRuleFlowGroupDeactivated(RuleFlowGroupDeactivatedEvent rfgde) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
                 agendaEventListener.beforeRuleFlowGroupDeactivated(rfgde);
             }
         }
 
+        @Override
         public void afterRuleFlowGroupDeactivated(RuleFlowGroupDeactivatedEvent rfgde) {
             for (AgendaEventListener agendaEventListener : agendaEventListeners) {
                 agendaEventListener.afterRuleFlowGroupDeactivated(rfgde);
             }
         }
 
+        @Override
         public void objectInserted(ObjectInsertedEvent oie) {
-            for (WorkingMemoryEventListener workingMemoryEventListener : workingMemoryEventListeners) {
+            for (RuleRuntimeEventListener workingMemoryEventListener : workingMemoryEventListeners) {
                 workingMemoryEventListener.objectInserted(oie);
             }
         }
 
+        @Override
         public void objectUpdated(ObjectUpdatedEvent oue) {
-            for (WorkingMemoryEventListener workingMemoryEventListener : workingMemoryEventListeners) {
+            for (RuleRuntimeEventListener workingMemoryEventListener : workingMemoryEventListeners) {
                 workingMemoryEventListener.objectUpdated(oue);
             }
         }
 
-        public void objectRetracted(ObjectRetractedEvent ore) {
-            for (WorkingMemoryEventListener workingMemoryEventListener : workingMemoryEventListeners) {
-                workingMemoryEventListener.objectRetracted(ore);
+        @Override
+        public void objectDeleted(ObjectDeletedEvent ore) {
+            for (RuleRuntimeEventListener workingMemoryEventListener : workingMemoryEventListeners) {
+                workingMemoryEventListener.objectDeleted(ore);
             }
         }
     }

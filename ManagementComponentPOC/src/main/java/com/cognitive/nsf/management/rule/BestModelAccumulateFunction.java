@@ -10,13 +10,13 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
-import org.drools.runtime.rule.TypedAccumulateFunction;
+import org.kie.api.runtime.rule.AccumulateFunction;
 
 /**
  *
  * @author esteban
  */
-public class BestModelAccumulateFunction implements TypedAccumulateFunction{
+public class BestModelAccumulateFunction implements AccumulateFunction{
 
     private class Context implements Serializable{
         DiseaseModelTotalWeight best;

@@ -14,12 +14,12 @@ import com.cognitive.nsf.management.model.expectation.MinimumWeightPolicyEnforce
 import com.cognitive.nsf.management.model.expectation.ModelExpectationEvaluator;
 import com.cognitive.nsf.management.model.expectation.PolicyEnforcer;
 import com.cognitive.nsf.management.model.expectation.drools.DroolsModelExpectationEvaluator;
-import org.drools.builder.ResourceType;
-import org.drools.io.ResourceFactory;
 import org.jcpsim.data.JCpSimParameter;
 import org.jcpsim.jmx.client.JCpSimPollingClient;
 import org.jcpsim.run.Global;
 import org.junit.Test;
+import org.kie.api.io.ResourceType;
+import org.kie.internal.io.ResourceFactory;
 
 /**
  *
