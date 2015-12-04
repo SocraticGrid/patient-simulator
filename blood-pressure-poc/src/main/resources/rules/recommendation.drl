@@ -1,0 +1,87 @@
+package com.cognitive.bp.poc;
+
+import com.cognitive.bp.poc.alert.UCSNotifier;
+import com.cognitive.bp.poc.logger.RulesLoggerHelper;
+import com.cognitive.bp.poc.model.*;
+import com.cognitive.bp.poc.model.gnome.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.ArrayList;
+import org.jcpsim.data.*;
+
+
+global Logger logger;
+global UCSNotifier ucsNotifier;
+
+rule "[RECOMMENDATION] Recommendation 1"
+salience 10
+when
+    AlertStatus(active == true, $delay: aADelay)
+    GenomeStatus(active == false)
+    $a: AbnormalBucket(processed == false)
+    $m: MedicationBucketAssociation(bucket == $a)
+    $p: PatientMedicationEvent(drugClass == "rxnorm:866516") from $m.medication
+then
+    RulesLoggerHelper.debug(logger, drools, "Sending Recommendation 1.");
+
+    insert(new AlertRequest("Significant blood pressure reduction associated with this patient's Metroprotol administration.", $delay));
+
+    insert(ucsNotifier.getAlertMessageBuilder()
+        .withStatus(org.socraticgrid.hl7.services.uc.model.AlertStatus.New)
+        .withSubject("Subject 1")
+        .withBody("Recommendation 1")
+        .withSender("eafry")
+        .withRespondBy(30)
+        .addRecipient(ucsNotifier.createAlertMessageRecipient("eafry"))
+        .buildMessage());
+
+    modify ($a){
+        setProcessed(true);
+    }
+end
+
+
+
+rule "[RECOMMENDATION] Recommendation 2"
+salience 10
+when
+    AlertStatus(active == true, $delay: aADelay)
+    GenomeStatus(active == true)
+    $a: AbnormalBucket(processed == false)
+    $m: MedicationBucketAssociation(bucket == $a)
+    $p: PatientMedicationEvent(drugClass == "rxnorm:866516") from $m.medication
+    //SNP(rsid == "rs1801252", genotype == "??") 
+    //SNP(rsid == "rs1801253", genotype == "??") 
+    SNP(rsid == "rs1801252") 
+    SNP(rsid == "rs1801253") 
+then
+    RulesLoggerHelper.debug(logger, drools, "Sending Recommendation 2.");
+
+    insert(new AlertRequest("Significant blood pressure reduction associated with this patient's Metroprotol administration.<br/>This patient also has Single Nucleotide Polumorphisms.<br/>An alternative class of medication may be indicated if more predictable blood pressure control is desired.", $delay));
+
+    insert(ucsNotifier.getAlertMessageBuilder()
+        .withStatus(org.socraticgrid.hl7.services.uc.model.AlertStatus.New)
+        .withSubject("Subject 2")
+        .withBody("Recommendation 2")
+        .withSender("eafry")
+        .withRespondBy(30)
+        .addRecipient(ucsNotifier.createAlertMessageRecipient("eafry"))
+        .buildMessage());
+
+    modify ($a){
+        setProcessed(true);
+    }
+end
+
+
+rule "[RECOMMENDATION] Deactivate AbnormalBucket"
+salience -10
+when
+    AlertStatus(active == false)
+    $a: AbnormalBucket(processed == false)
+then
+    modify ($a){
+        setProcessed(true);
+    }
+end

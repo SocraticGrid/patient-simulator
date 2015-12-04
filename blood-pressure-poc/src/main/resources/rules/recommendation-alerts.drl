@@ -1,0 +1,72 @@
+package com.cognitive.bp.poc;
+
+import com.cognitive.bp.poc.alert.*;
+import com.cognitive.bp.poc.logger.RulesLoggerHelper;
+import com.cognitive.bp.poc.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.socraticgrid.hl7.services.uc.model.AlertMessage;
+import org.socraticgrid.hl7.services.uc.model.Message;
+import java.util.List;
+import java.util.ArrayList;
+import org.jcpsim.data.*;
+
+
+global Logger logger;
+global UCSNotifier ucsNotifier;
+
+query areAlertsActive()
+    AlertStatus($active: active)
+end
+
+query getAlertsDelay()
+    AlertStatus($delay: aADelay)
+end
+
+rule "[ALERT] Set Default Alerts Status"
+salience 100
+when
+then
+    RulesLoggerHelper.debug(logger, drools, "Setting Alert Status to enabled = false");
+    insert(new AlertStatus(false, 7));
+end
+
+rule "[ALERT] Toggle Alerts Status"
+salience 90
+when
+    $t: ToggleService(service == ToggleService.SERVICE.ALERTS)
+    $a: AlertStatus()
+then
+    RulesLoggerHelper.debug(logger, drools, "Toggling Alert Status to enabled = {}", $t.isOn());
+    modify($a){
+        setActive($t.isOn());
+    }
+    retract($t);
+end
+
+rule "[ALERT] Set Alert notification delay"
+salience 90
+when
+    $r: RecommendationChange(parameter == RecommendationChange.PARAMETER.AA_DELAY, $newValue: newValueAsLong)
+    $a: AlertStatus()
+then
+    RulesLoggerHelper.debug(logger, drools, "Setting Alert notification delay to {} seconds", $newValue);
+    modify($a){
+        setAADelay($newValue);
+    }
+    retract($r);
+end
+
+rule "[ALERT] Simple UCS Message Notification"
+when
+    $m: Message()
+    AlertStatus(active == true, $delay: aADelay)
+then
+    RulesLoggerHelper.debug(logger, drools, "Scheduling Message Notification with a delay of {} seconds", $delay);
+    
+    ucsNotifier.scheduleSendMessageInvokation($m, $delay);
+
+    RulesLoggerHelper.debug(logger, drools, "UCS Message notification scheduled");
+    
+    retract($m);
+end

@@ -1,15 +1,7 @@
 package com.cognitive.vo2calculator;
 
 import com.cognitive.vo2calculator.cache.LRUCache;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.List;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-import sun.org.mozilla.javascript.internal.NativeArray;
-import sun.org.mozilla.javascript.internal.NativeObject;
 
 /*
  * To change this template, choose Tools | Templates

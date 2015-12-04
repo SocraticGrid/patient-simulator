@@ -3,12 +3,14 @@ package com.cognitive.vo2calculator;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import sun.org.mozilla.javascript.internal.NativeArray;
-import sun.org.mozilla.javascript.internal.NativeObject;
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
+//import sun.org.mozilla.javascript.internal.NativeArray;
+//import sun.org.mozilla.javascript.internal.NativeObject;
 
 /*
  * To change this template, choose Tools | Templates
@@ -156,6 +158,10 @@ public class Vo2Formula {
         return (Invocable)this.getScriptEngine();
     }
 
+    /**************************************************************************/
+    /*                              JDK 7                                     */
+    /**************************************************************************/
+    /*
     private Compartment convertToCompartment(NativeObject obj) {
         Compartment compartment = new Compartment();
 
@@ -167,7 +173,7 @@ public class Vo2Formula {
 
         return compartment;
     }
-    
+
     private List<Compartment> prepareResults() throws ScriptException, NoSuchMethodException {
         List<Compartment> results = new ArrayList<Compartment>();
 
@@ -180,6 +186,39 @@ public class Vo2Formula {
         
         NativeObject obj = (NativeObject) this.getScriptEngineAsJSInvocable().invokeFunction("getAbgResult");
         results.add(this.convertToCompartment(obj));
+        return results;
+    }
+    */
+    
+    
+    /**************************************************************************/
+    /*                              JDK 8                                     */
+    /**************************************************************************/
+    private Compartment convertToCompartment(ScriptObjectMirror obj) {
+        Compartment compartment = new Compartment();
+
+        for (Map.Entry<String, Object> entry : obj.entrySet()) {
+            compartment.set(entry.getKey(), Double.valueOf(entry.getValue().toString()));
+            
+        }
+        
+        return compartment;
+    }
+    
+    private List<Compartment> prepareResults() throws ScriptException, NoSuchMethodException {
+        List<Compartment> results = new ArrayList<Compartment>();
+
+        
+        
+        ScriptObjectMirror getResults = (ScriptObjectMirror) this.getScriptEngineAsJSInvocable().invokeFunction("getResults");
+        for (Object value : getResults.values()) {
+            Compartment c = this.convertToCompartment((ScriptObjectMirror)value);
+            results.add(c);
+        }
+        
+        ScriptObjectMirror getAbgResult = (ScriptObjectMirror)this.getScriptEngineAsJSInvocable().invokeFunction("getAbgResult");
+        results.add(this.convertToCompartment(getAbgResult));
+        
         
         return results;
     }

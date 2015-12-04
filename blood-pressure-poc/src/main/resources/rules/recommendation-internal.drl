@@ -1,0 +1,129 @@
+package com.cognitive.bp.poc;
+
+import com.cognitive.bp.poc.logger.RulesLoggerHelper;
+import com.cognitive.bp.poc.model.*;
+import com.cognitive.bp.poc.recommendation.patient.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.ArrayList;
+import org.jcpsim.data.*;
+
+
+global Logger logger;
+
+query getAbnormalBucket()
+    $a: AbnormalBucket()
+end
+
+query getAlertRequest()
+    $a: AlertRequest()
+end
+
+rule "[PROCESS] Log JCpSimData"
+when
+    $d1: JCpSimData()
+then
+    RulesLoggerHelper.debug(logger, drools, "JCpSimData({}) - AA_O_PRESP: {}", $d1.getTime(), $d1.get(JCpSimParameter.AA_O_PRESP));
+end 
+
+/*
+rule "[PROCESS] Find Peak"
+when
+    $d1: JCpSimData()
+    $peak: JCpSimData(this after $d1)
+    not (JCpSimData(this after $d1, this before $peak))
+    $d3: JCpSimData(this after $peak)
+    not (JCpSimData(this after $peak, this before $d3))
+
+    JCpSimData(this == $peak, data[JCpSimParameter.AA_O_PRESP] > $d1.data[JCpSimParameter.AA_O_PRESP], data[JCpSimParameter.AA_O_PRESP] > $d3.data[JCpSimParameter.AA_O_PRESP])
+then
+    RulesLoggerHelper.debug(logger, drools, "Peak Found! {} <= {} >= {}", $d1.get(JCpSimParameter.AA_O_PRESP), $peak.get(JCpSimParameter.AA_O_PRESP), $d3.get(JCpSimParameter.AA_O_PRESP));
+    insert(new PeakJCpSimData($peak.getData()));
+end
+*/
+
+rule "[PROCESS] Create Inital Bucket"
+when
+    not (PeaksBucket())
+then
+    RulesLoggerHelper.debug(logger, drools, "Creating Initial PeaksBucket.");
+    insert (new PeaksBucket());
+end
+
+rule "[PROCESS] Create New Bucket"
+when
+    not (PeaksBucket(full == false))
+then
+    RulesLoggerHelper.debug(logger, drools, "Creating new PeaksBucket.");
+    insert (new PeaksBucket());
+end
+
+rule "[PROCESS] Add Peak to Bucket"
+when
+    $b: PeaksBucket(full == false)
+    $p: PeakJCpSimData(inBucket == false)
+then
+    RulesLoggerHelper.debug(logger, drools, "Adding {} to PeaksBucket {}. Peak's AA_O_PRESP: {}", $p, $b, $p.getData().get(JCpSimParameter.AA_O_PRESP));
+
+    modify($p){
+        setInBucket(true)
+    };
+
+    modify ($b){
+        addPeak($p);
+    };
+    
+end
+
+
+rule "[PROCESS] Log Standard Deviation of full Bucket"
+when
+    PeaksBucket(full == true, $s: getStandardDeviation(JCpSimParameter.AA_O_PRESP))
+then
+    RulesLoggerHelper.debug(logger, drools, "PeaksBucket SD: {}.", $s);
+end
+
+rule "[PROCESS] Compare Standard Deviations of 2 last full Buckets"
+when
+    $b1: PeaksBucket(full == true, $s1: getStandardDeviation(JCpSimParameter.AA_O_PRESP))
+    $b2: PeaksBucket(full == true, $s2: getStandardDeviation(JCpSimParameter.AA_O_PRESP), this after $b1)
+    not (PeaksBucket(this after $b1, this before $b2))
+
+    eval (Math.abs($s1 - $s2) > 2.0)
+
+then
+    RulesLoggerHelper.debug(logger, drools, "Found significative SD difference: |{} - {}| > 2.0", $s1, $s2);
+    AbnormalBucket abnormalBucket = new AbnormalBucket($b2, $b2.getStandardDeviation(JCpSimParameter.AA_O_PRESP));
+    insert(abnormalBucket);
+end
+
+
+rule "[PROCESS] Get Patient Medications during AbnormalBucket Standard Deviation of full Bucket"
+when
+    $a: AbnormalBucket(processed == false)
+then
+    RulesLoggerHelper.debug(logger, drools, "Getting Prescriptions during AbnormalBucket '{}'.", $a);
+    List prescriptions = PatientDataService.getInstance().getPatientMedications("2", $a.getStart()-3000, $a.getEnd()+3000);
+    RulesLoggerHelper.debug(logger, drools, "Found {} Prescription/s.", prescriptions.size());
+
+    for (Object p : prescriptions){
+        RulesLoggerHelper.debug(logger, drools, "Inserting MedicationBucketAssociation for Prescription '{}' and bucket '{}'.", p, $a);
+        insertLogical(new MedicationBucketAssociation((PatientMedicationEvent)p, $a));
+    }
+
+end
+
+rule "[PROCESS] Retract old Buckets"
+salience 10
+when
+    $d1: PeaksBucket(full == true)
+    $peak: PeaksBucket(full == true, this after $d1)
+    not (PeaksBucket(this after $d1, this before $peak))
+    $d3: PeaksBucket(full == true, this after $peak)
+    not (PeaksBucket(this after $peak, this before $d3))
+
+then
+    RulesLoggerHelper.debug(logger, drools, "Removing old Bucket {}.", $d1);
+    retract($d1);
+end

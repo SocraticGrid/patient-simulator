@@ -1,0 +1,83 @@
+package com.cognitive.bp.poc;
+
+import com.cognitive.bp.poc.alert.UCSNotifier;
+import com.cognitive.bp.poc.logger.RulesLoggerHelper;
+import com.cognitive.bp.poc.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.ArrayList;
+import org.jcpsim.data.*;
+
+
+global Logger logger;
+global String agentId;
+global UCSNotifier ucsNotifier;
+
+declare JCpSimData
+    @role(event)
+end
+
+declare PeakJCpSimData
+    @role(event)
+    @timestamp( timestamp )
+end
+
+declare PeaksBucket
+    @role(event)
+end
+
+declare AbnormalBucket
+    @role(event)
+    @timestamp( start )
+    @duration( duration )
+end
+
+declare PatientMedicationEvent
+    @timestamp( timestamp )
+end
+
+declare AlertStatus
+    active  : boolean
+    aADelay : long
+end
+
+declare GenomeStatus
+    active : boolean
+end
+
+declare MedicationBucketAssociation
+    medication  :   PatientMedicationEvent
+    bucket      :   AbnormalBucket
+end
+
+/**
+Configures the session's logger global.
+**/
+rule "[CONFIG] Logger Configuration"
+salience 1000
+when
+then
+    Logger sessionLogger = LoggerFactory.getLogger("session");
+    drools.getWorkingMemory().setGlobal("logger",sessionLogger);
+    RulesLoggerHelper.debug(sessionLogger, drools, "Session Logger configured. ");
+end
+
+/**
+Creates a new DialogueHelperFact for communication with AA and inserts it as 
+a fact.
+**/
+rule "[CONFIG] Helpers Configuration"
+salience 900
+when
+then
+    //Set the agentId global used as the sender of Alerts
+    drools.getWorkingMemory().setGlobal("agentId","CDS");
+
+    UCSNotifier ucs = new UCSNotifier();
+    ucs.configure();
+
+    drools.getWorkingMemory().setGlobal("ucsNotifier",ucs);
+
+    RulesLoggerHelper.debug(logger, drools, "UCSNotifier for DSA configured and set as global.");
+end

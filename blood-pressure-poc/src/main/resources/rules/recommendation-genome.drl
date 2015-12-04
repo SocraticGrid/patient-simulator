@@ -1,0 +1,103 @@
+package com.cognitive.bp.poc;
+
+import com.cognitive.bp.poc.logger.RulesLoggerHelper;
+import com.cognitive.bp.poc.model.*;
+import com.cognitive.bp.poc.model.gnome.*;
+import com.cognitive.bp.poc.recommendation.gnome.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
+import org.jcpsim.data.*;
+
+
+global Logger logger;
+
+/**
+* Identifies the RS ids associated to a Drug class. 
+**/
+declare GenoSet
+    name        : String  @key
+    drugClass   : String  @key
+    rsids       : List    @key
+end
+
+
+query isGenomeServiceActive()
+    GenomeStatus($active: active)
+end
+
+
+/**
+ Hardcoded drug -> rs ids relationships.
+**/
+rule "[GENOME][MOCKED] Init genosets"
+salience 10
+when
+then
+    //ADRB1: Polymorphisms in the beta-1 adrenergic receptor gene ADRB1 may explain up to 20% of the variability 
+    //in how individuals respond to treatment with beta blocker drugs used to help lower blood pressure.
+    //[from http://snpedia.com/index.php/ADRB1]
+    
+    
+    List ADRB1 = new ArrayList();
+    ADRB1.add("rs1801252");   //Rs1801252: How well beta blocker drugs work to help lower a patients high blood pressure [from http://snpedia.com/index.php/Rs1801252]
+    ADRB1.add("rs1801253");   //Rs1801253: How well beta blocker drugs work to help lower a patients high blood pressure [from http://snpedia.com/index.php/Rs1801253]
+    insert(new GenoSet("ADRB1", "rxnorm:866516", ADRB1));
+
+    /*
+    //Gs127: Intermediate warfarin metabolizer [from http://snpedia.com/index.php/Gs127]
+    List rsids127 = new ArrayList();
+    rsids127.add("rs1799853");
+    rsids127.add("rs1057910");
+    insert(new GenoSet("Gs127", "rxnorm:11289", rsids127));
+    */
+end
+
+
+rule "[GENOME] Set Default Genome Status"
+salience 100
+when
+then
+    RulesLoggerHelper.debug(logger, drools, "Setting Genome Status to enabled = false");
+    insert(new GenomeStatus(false));
+end
+
+rule "[GENOME] Toggle Genome Status"
+salience 90
+when
+    $t: ToggleService(service == ToggleService.SERVICE.GENOME)
+    $g: GenomeStatus()
+then
+    RulesLoggerHelper.debug(logger, drools, "Toggling Genome Status to enabled = {}", $t.isOn());
+    modify($g){
+        setActive($t.isOn());
+    }
+    retract($t);
+end
+
+rule "[GENOME] Gather rsids for Drug Class"
+salience 100
+dialect "mvel"
+when
+    GenomeStatus(active == true)
+    $ma: MedicationBucketAssociation()
+    $m: PatientMedicationEvent($drugClass: drugClass) from $ma.medication
+    $s: Set(empty == false) from accumulate ( 
+          GenoSet(drugClass == $drugClass, $rsids: rsids), 
+            init( Set rsids = new HashSet(); ),
+            action( rsids.addAll($rsids); ),
+            result( rsids )
+    )
+    $rsid: String() from $s
+    not (SNP(rsid == $rsid))
+then
+    RulesLoggerHelper.debug(logger, drools, "{} found. Gathering SNP {} related to {} drug...", $m, $rsid, $drugClass);
+    SNP result = GenomeDataService.getInstance().getSNPByRsid("2", $rsid);
+    RulesLoggerHelper.debug(logger, drools, "Inserting genoset {}", result);
+    insert(result);
+end
