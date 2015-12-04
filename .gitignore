@@ -1,5 +1,2 @@
-/PatientSimulatorScenarios/nbproject/private/
-/patientSimulator/jcp-sim/target/
-/ManagementComponent/target/
-/ManagementComponentPOC/target/
-/patientSimulator/jcp-sim-websocket/target/
+target/
+nbproject/
